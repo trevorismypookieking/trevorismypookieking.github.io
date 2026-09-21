@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GameHub</title>
+  <meta name="description" content="A simple browser game portal.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="logo" href="index.html">GAME<span>HUB</span></a>
+    <nav>
+      <a href="#featured">Featured</a>
+      <a href="#games">Games</a>
+      <button id="themeToggle" class="icon-button" aria-label="Toggle theme">☾</button>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">BROWSER GAME PORTAL</p>
+        <h1>Play something<br><span>fun.</span></h1>
+        <p class="hero-text">A clean, fast collection of browser games. Add your own games by editing one simple JavaScript file.</p>
+        <a class="primary-button" href="#games">Browse Games</a>
+      </div>
+    </section>
+
+    <section id="featured" class="section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">HAND PICKED</p>
+          <h2>Featured Games</h2>
+        </div>
+      </div>
+      <div id="featuredGrid" class="game-grid"></div>
+    </section>
+
+    <section id="games" class="section">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">LIBRARY</p>
+          <h2>All Games</h2>
+        </div>
+        <div class="controls">
+          <label class="search">
+            <span>⌕</span>
+            <input id="searchInput" type="search" placeholder="Search games..." autocomplete="off">
+          </label>
+          <select id="categoryFilter" aria-label="Filter by category">
+            <option value="all">All categories</option>
+          </select>
+        </div>
+      </div>
+      <div id="gameGrid" class="game-grid"></div>
+      <p id="noResults" class="no-results" hidden>No games match your search.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>© 2026 GameHub</p>
+    <p>Built with HTML, CSS & JavaScript.</p>
+  </footer>
+
+  <script src="games.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

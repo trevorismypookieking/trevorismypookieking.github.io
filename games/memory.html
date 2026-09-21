@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Memory</title>
+<style>body{margin:0;background:#0b0d12;color:white;font-family:system-ui;text-align:center}main{padding:30px}.board{display:grid;grid-template-columns:repeat(4,80px);gap:8px;justify-content:center}.card{height:80px;font-size:2rem;border:0;border-radius:10px;background:#1a1f2b;color:white;cursor:pointer}a{color:#62a8ff;text-decoration:none}</style></head>
+<body><main><p><a href="../index.html">← Back to GameHub</a></p><h1>🧠 Memory</h1><p id="status">Find all the pairs.</p><div id="board" class="board"></div><button onclick="start()">Restart</button></main>
+<script>
+const icons=["🐶","🐱","🦊","🐸","🐼","🐵","🦁","🐯"];let deck,first=null,lock=false,matches=0;
+function start(){deck=[...icons,...icons].sort(()=>Math.random()-.5).map((v,i)=>({v,i,open:false,done:false}));first=null;lock=false;matches=0;render()}
+function render(){document.getElementById("board").innerHTML=deck.map(c=>`<button class="card" onclick="pick(${c.i})">${c.open||c.done?c.v:"?"}</button>`).join("");}
+function pick(i){if(lock)return;let c=deck[i];if(c.open||c.done)return;c.open=true;render();if(!first){first=c;return}if(first.v===c.v){first.done=c.done=true;first=null;matches++;if(matches===icons.length)document.getElementById("status").textContent="You matched them all!"}else{lock=true;setTimeout(()=>{first.open=c.open=false;first=null;lock=false;render()},700)}}
+start();
+</script></body></html>

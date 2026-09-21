@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Click Challenge</title>
+<style>body{margin:0;background:#0b0d12;color:white;font-family:system-ui;text-align:center}main{padding:50px}button{font-size:2rem;padding:35px 60px;border:0;border-radius:20px;cursor:pointer;background:#62a8ff;color:white}a{color:#62a8ff;text-decoration:none}</style></head>
+<body><main><p><a href="../index.html">← Back to GameHub</a></p><h1>🖱️ Click Challenge</h1><p id="time">Time: 10</p><p id="score">Clicks: 0</p><button id="click">START</button></main>
+<script>
+let running=false,score=0,time=10,interval;
+const b=document.getElementById("click");
+b.onclick=()=>{if(!running){running=true;score=0;time=10;b.textContent="CLICK!";document.getElementById("score").textContent="Clicks: 0";interval=setInterval(()=>{time--;document.getElementById("time").textContent="Time: "+time;if(time<=0){clearInterval(interval);running=false;b.textContent="PLAY AGAIN";alert("You got "+score+" clicks!");}},1000)}else{score++;document.getElementById("score").textContent="Clicks: "+score}};
+</script></body></html>

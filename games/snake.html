@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Snake - GameHub</title>
+<style>
+body{margin:0;background:#0b0d12;color:#fff;font-family:system-ui;text-align:center}
+main{max-width:600px;margin:40px auto;padding:20px}
+a{color:#62a8ff;text-decoration:none}
+canvas{width:min(90vw,500px);height:min(90vw,500px);background:#131720;border:1px solid #333;border-radius:12px}
+button{padding:10px 18px;margin:8px;border:0;border-radius:8px;cursor:pointer}
+</style>
+</head>
+<body>
+<main>
+<p><a href="../index.html">← Back to GameHub</a></p>
+<h1>🐍 Snake</h1>
+<p>Use the arrow keys or WASD.</p>
+<canvas id="game" width="500" height="500"></canvas>
+<p id="score">Score: 0</p>
+<button onclick="restart()">Restart</button>
+</main>
+<script>
+const c=document.getElementById("game"),ctx=c.getContext("2d"),scoreEl=document.getElementById("score");
+const cells=25,size=c.width/cells;
+let snake,food,dx,dy,score,timer;
+function restart(){
+ snake=[{x:12,y:12},{x:11,y:12},{x:10,y:12}];
+ food=randomFood();dx=1;dy=0;score=0;scoreEl.textContent="Score: 0";
+ clearInterval(timer);timer=setInterval(tick,100);
+ draw();
+}
+function randomFood(){return {x:Math.floor(Math.random()*cells),y:Math.floor(Math.random()*cells)}}
+function tick(){
+ const head={x:snake[0].x+dx,y:snake[0].y+dy};
+ if(head.x<0||head.y<0||head.x>=cells||head.y>=cells||snake.some(s=>s.x===head.x&&s.y===head.y)){
+   clearInterval(timer);setTimeout(()=>alert("Game over! Score: "+score),20);return;
+ }
+ snake.unshift(head);
+ if(head.x===food.x&&head.y===food.y){score++;scoreEl.textContent="Score: "+score;food=randomFood()}
+ else snake.pop();
+ draw();
+}
+function draw(){
+ ctx.clearRect(0,0,c.width,c.height);
+ ctx.fillStyle="#62a8ff";snake.forEach(s=>ctx.fillRect(s.x*size+1,s.y*size+1,size-2,size-2));
+ ctx.fillStyle="#ff5c7a";ctx.fillRect(food.x*size+3,food.y*size+3,size-6,size-6);
+}
+document.addEventListener("keydown",e=>{
+ const k=e.key.toLowerCase();
+ if((k==="arrowup"||k==="w")&&dy!==1){dx=0;dy=-1}
+ if((k==="arrowdown"||k==="s")&&dy!==-1){dx=0;dy=1}
+ if((k==="arrowleft"||k==="a")&&dx!==1){dx=-1;dy=0}
+ if((k==="arrowright"||k==="d")&&dx!==-1){dx=1;dy=0}
+});
+restart();
+</script>
+</body>
+</html>

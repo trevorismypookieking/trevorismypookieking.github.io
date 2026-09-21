@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tic-Tac-Toe</title>
+<style>body{margin:0;background:#0b0d12;color:white;font-family:system-ui;text-align:center}main{padding:35px}.board{display:grid;grid-template-columns:repeat(3,100px);gap:8px;justify-content:center}.cell{height:100px;font-size:3rem;border:0;border-radius:10px;background:#1a1f2b;color:white;cursor:pointer}.cell:hover{background:#242b3b}a{color:#62a8ff;text-decoration:none}</style></head>
+<body><main><p><a href="../index.html">← Back to GameHub</a></p><h1>❌ Tic-Tac-Toe</h1><p id="status">X's turn</p><div class="board" id="board"></div><button onclick="reset()">Restart</button></main>
+<script>
+let cells=Array(9).fill(""),turn="X",over=false;
+const board=document.getElementById("board"),status=document.getElementById("status");
+function render(){board.innerHTML=cells.map((v,i)=>`<button class="cell" onclick="move(${i})">${v}</button>`).join("");}
+function move(i){if(cells[i]||over)return;cells[i]=turn;let win=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]].some(a=>a.every(x=>cells[x]===turn));if(win){status.textContent=turn+" wins!";over=true}else if(cells.every(Boolean)){status.textContent="Draw!";over=true}else{turn=turn==="X"?"O":"X";status.textContent=turn+"'s turn"}render()}
+function reset(){cells=Array(9).fill("");turn="X";over=false;status.textContent="X's turn";render()}reset();
+</script></body></html>
