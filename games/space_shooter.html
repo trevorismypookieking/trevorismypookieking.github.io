@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Space Shooter — კოსმოსური მათემატიკა</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Noto+Sans+Georgian:wght@600;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:#000;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;overflow:hidden;
+  font-family:'Orbitron',sans-serif;
+  color:#fff;
+}
+#wrap{position:relative;width:100%;max-width:640px;}
+
+/* HUD */
+#hud{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:0.6rem 0.75rem;
+  background:rgba(0,0,0,0.7);
+  border-bottom:1px solid rgba(0,180,255,0.15);
+}
+.hud-item{display:flex;flex-direction:column;align-items:center;gap:2px;}
+.hud-lbl{font-size:8px;letter-spacing:2px;color:rgba(0,180,255,0.6);text-transform:uppercase;}
+.hud-val{font-size:18px;font-weight:700;color:#00b4ff;}
+#lives-row{display:flex;gap:5px;}
+.life-icon{font-size:14px;transition:opacity 0.3s;}
+.life-icon.dead{opacity:0.2;filter:grayscale(1);}
+#wave-badge{
+  padding:4px 14px;border-radius:20px;
+  border:1px solid rgba(0,180,255,0.3);
+  font-size:10px;letter-spacing:2px;color:rgba(0,180,255,0.8);
+  background:rgba(0,180,255,0.05);
+}
+
+/* Canvas */
+#canvas-wrap{position:relative;overflow:hidden;background:#000;}
+canvas{display:block;}
+
+/* Input */
+#ctrl{
+  background:rgba(0,0,0,0.85);
+  border-top:1px solid rgba(0,180,255,0.15);
+  padding:0.65rem 0.75rem;
+  display:flex;gap:10px;align-items:center;
+}
+#ans{
+  flex:1;
+  background:rgba(0,180,255,0.06);
+  border:1.5px solid rgba(0,180,255,0.25);
+  border-radius:6px;
+  color:#00e5ff;
+  font-family:'Orbitron',sans-serif;
+  font-size:22px;font-weight:700;
+  text-align:center;padding:9px;outline:none;
+  letter-spacing:4px;
+  transition:border-color 0.15s,background 0.15s;
+  caret-color:#00e5ff;
+}
+#ans:focus{border-color:rgba(0,229,255,0.6);}
+#ans.ok{border-color:#39ff7a;background:rgba(57,255,122,0.1);color:#39ff7a;}
+#ans.err{border-color:#ff3d71;background:rgba(255,61,113,0.1);color:#ff3d71;animation:shake 0.25s;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
+#fire-btn{
+  padding:9px 20px;
+  background:rgba(0,180,255,0.1);
+  border:1.5px solid rgba(0,180,255,0.4);
+  border-radius:6px;color:#00b4ff;
+  font-family:'Orbitron',sans-serif;
+  font-size:12px;font-weight:700;
+  cursor:pointer;letter-spacing:1px;
+  transition:background 0.15s;white-space:nowrap;
+}
+#fire-btn:hover{background:rgba(0,180,255,0.2);}
+#fire-btn:disabled{opacity:0.3;cursor:default;}
+
+/* Overlays */
+.ov{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  background:rgba(0,0,0,0.9);z-index:20;gap:1.2rem;padding:2rem;
+}
+.ov h2{
+  font-size:26px;font-weight:900;letter-spacing:4px;
+  color:#00e5ff;text-shadow:0 0 20px rgba(0,229,255,0.6);
+}
+.ov p{font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:1px;text-align:center;
+  font-family:'Noto Sans Georgian',sans-serif;line-height:1.9;}
+.ov button{
+  padding:12px 36px;background:transparent;
+  border:1.5px solid #00e5ff;border-radius:6px;
+  color:#00e5ff;font-family:'Orbitron',sans-serif;
+  font-size:13px;font-weight:700;letter-spacing:3px;cursor:pointer;
+  transition:background 0.15s,box-shadow 0.15s;
+}
+.ov button:hover{background:rgba(0,229,255,0.1);box-shadow:0 0 20px rgba(0,229,255,0.3);}
+.res-row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.res-box{
+  background:rgba(255,255,255,0.04);border:0.5px solid rgba(255,255,255,0.08);
+  border-radius:8px;padding:12px 18px;text-align:center;min-width:90px;
+}
+.res-box .rl{font-size:8px;letter-spacing:2px;color:rgba(255,255,255,0.3);margin-bottom:4px;}
+.res-box .rv{font-size:22px;font-weight:700;}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div class="hud-item">
+      <div class="hud-lbl">ქულა</div>
+      <div class="hud-val" id="hud-score">0</div>
+    </div>
+    <div id="wave-badge">WAVE <span id="hud-wave">1</span></div>
+    <div class="hud-item">
+      <div class="hud-lbl">სიცოცხლე</div>
+      <div id="lives-row">
+        <span class="life-icon" id="li0">🛸</span>
+        <span class="life-icon" id="li1">🛸</span>
+        <span class="life-icon" id="li2">🛸</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="gc"></canvas>
+
+    <div class="ov" id="ov-start">
+      <h2>SPACE SHOOTER</h2>
+      <p>მტრები ეშვება ქვევით — გამოსახულება წაიკითხე<br>სწორი პასუხი ჩაწერე და FIRE! 🚀<br><br>← → ან მაუსი — გემის მოძრაობა</p>
+      <button onclick="startGame()">▶ LAUNCH</button>
+    </div>
+
+    <div class="ov" id="ov-dead" style="display:none">
+      <h2 style="color:#ff3d71;text-shadow:0 0 20px rgba(255,61,113,0.6);">GAME OVER</h2>
+      <div class="res-row">
+        <div class="res-box"><div class="rl">SCORE</div><div class="rv" style="color:#00e5ff" id="r-score">0</div></div>
+        <div class="res-box"><div class="rl">WAVE</div><div class="rv" style="color:#ffe600" id="r-wave">1</div></div>
+        <div class="res-box"><div class="rl">KILLS</div><div class="rv" style="color:#39ff7a" id="r-kills">0</div></div>
+      </div>
+      <button onclick="startGame()">↺ RETRY</button>
+    </div>
+
+    <div class="ov" id="ov-wave" style="display:none">
+      <h2 id="ov-wave-title">WAVE 1</h2>
+      <p id="ov-wave-sub" style="font-size:14px;color:#ffe600;"></p>
+      <p>მოემზადე!</p>
+    </div>
+  </div>
+
+  <div id="ctrl">
+    <input id="ans" type="number" placeholder="?" autocomplete="off" inputmode="numeric" disabled/>
+    <button id="fire-btn" onclick="fireShot()" disabled>🔫 FIRE</button>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('gc');
+const ctx = canvas.getContext('2d');
+const wrap = document.getElementById('canvas-wrap');
+
+// Responsive sizing
+function resize(){
+  const mw = Math.min(640, window.innerWidth);
+  canvas.width = mw;
+  canvas.height = Math.min(420, window.innerHeight - 160);
+  wrap.style.height = canvas.height + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+const W = ()=>canvas.width, H = ()=>canvas.height;
+
+// State
+let score=0, lives=3, wave=1, kills=0, gameOn=false;
+let ship={x:0,y:0,w:36,h:28,vx:0,targetX:0};
+let enemies=[], bullets=[], particles=[], stars=[], lasers=[];
+let keys={}, frameId, lastSpawn=0, spawnInterval=2200;
+
+// Stars
+function initStars(){
+  stars=[];
+  for(let i=0;i<120;i++){
+    stars.push({
+      x:Math.random()*W(), y:Math.random()*H(),
+      r:Math.random()*1.2+0.2,
+      speed:0.3+Math.random()*0.8,
+      a:0.3+Math.random()*0.7
+    });
+  }
+}
+
+function ri(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+// Enemies
+const ENEMY_COLORS=[
+  {fill:'#0a1a3a',stroke:'#00b4ff',glow:'rgba(0,180,255,0.4)',text:'#7de8ff'},
+  {fill:'#1a0a30',stroke:'#a855f7',glow:'rgba(168,85,247,0.4)',text:'#d4a0ff'},
+  {fill:'#1a1000',stroke:'#ffe600',glow:'rgba(255,230,0,0.4)',text:'#fff380'},
+  {fill:'#1a0010',stroke:'#ff3d71',glow:'rgba(255,61,113,0.4)',text:'#ff9ab0'},
+  {fill:'#001a12',stroke:'#39ff7a',glow:'rgba(57,255,122,0.4)',text:'#90ffc0'},
+];
+
+function genProblem(){
+  const ops = wave<2?['+','-']: wave<3?['+','-','×']: wave<5?['+','-','×','÷']:['×','÷','²','+×'];
+  const op=ops[ri(0,ops.length-1)];
+  let a,b,ans,expr;
+  if(op==='+'){a=ri(1,10+wave*2);b=ri(1,10+wave*2);ans=a+b;expr=`${a}+${b}`;}
+  else if(op==='-'){a=ri(5,20+wave*2);b=ri(1,a);ans=a-b;expr=`${a}−${b}`;}
+  else if(op==='×'){a=ri(2,5+wave);b=ri(2,5+wave);ans=a*b;expr=`${a}×${b}`;}
+  else if(op==='÷'){ans=ri(2,9+wave);b=ri(2,9);a=ans*b;expr=`${a}÷${b}`;}
+  else{a=ri(2,12);ans=a*a;expr=`${a}²`;}
+  return{expr,ans};
+}
+
+function spawnEnemy(){
+  const col=ENEMY_COLORS[ri(0,ENEMY_COLORS.length-1)];
+  const {expr,ans}=genProblem();
+  const w=72+expr.length*5, h=44;
+  // avoid edge overlap
+  const maxX=W()-w/2-10;
+  const minX=w/2+10;
+  let x,tries=0;
+  do{ x=ri(minX,maxX); tries++; }
+  while(tries<20 && enemies.some(e=>Math.abs(e.x-x)<w+12 && e.y<h*2));
+  const speed=0.4+wave*0.12+Math.random()*0.2;
+  enemies.push({x,y:-h/2-10,w,h,ans,expr,col,speed,hp:1,shaking:0,alpha:1});
+}
+
+// Draw ship (vector art)
+function drawShip(x,y){
+  ctx.save();
+  ctx.translate(x,y);
+  // engine glow
+  ctx.shadowColor='#00e5ff';
+  ctx.shadowBlur=18;
+  // body
+  ctx.fillStyle='#0d2a4a';
+  ctx.beginPath();
+  ctx.moveTo(0,-14);ctx.lineTo(12,10);ctx.lineTo(6,6);
+  ctx.lineTo(0,14);ctx.lineTo(-6,6);ctx.lineTo(-12,10);
+  ctx.closePath();ctx.fill();
+  // cockpit
+  ctx.fillStyle='#00e5ff';
+  ctx.beginPath();ctx.ellipse(0,-4,4,7,0,0,Math.PI*2);ctx.fill();
+  // wings
+  ctx.fillStyle='#1a4a7a';
+  ctx.beginPath();ctx.moveTo(-6,2);ctx.lineTo(-18,12);ctx.lineTo(-10,12);ctx.lineTo(-4,6);ctx.closePath();ctx.fill();
+  ctx.beginPath();ctx.moveTo(6,2);ctx.lineTo(18,12);ctx.lineTo(10,12);ctx.lineTo(4,6);ctx.closePath();ctx.fill();
+  // thruster
+  ctx.fillStyle='rgba(0,229,255,0.8)';
+  ctx.beginPath();ctx.moveTo(-5,12);ctx.lineTo(5,12);ctx.lineTo(3,18+Math.random()*4);ctx.lineTo(-3,18+Math.random()*4);ctx.closePath();ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.restore();
+}
+
+function drawEnemy(e){
+  ctx.save();
+  if(e.shaking>0){
+    ctx.translate(Math.sin(e.shaking*30)*4,0);
+    e.shaking=Math.max(0,e.shaking-0.07);
+  }
+  ctx.globalAlpha=e.alpha;
+  const x=e.x-e.w/2, y=e.y-e.h/2;
+  const r=8;
+  // glow
+  ctx.shadowColor=e.col.glow;
+  ctx.shadowBlur=16;
+  // bg
+  ctx.fillStyle=e.col.fill;
+  rrect(ctx,x,y,e.w,e.h,r);ctx.fill();
+  // border
+  ctx.strokeStyle=e.col.stroke;
+  ctx.lineWidth=1.5;
+  rrect(ctx,x,y,e.w,e.h,r);ctx.stroke();
+  ctx.shadowBlur=0;
+  // alien icon
+  ctx.font='14px serif';
+  ctx.textBaseline='middle';ctx.textAlign='left';
+  ctx.fillText('👾',x+6,e.y);
+  // expression
+  ctx.fillStyle=e.col.text;
+  ctx.font=`bold 14px "Orbitron",monospace`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(e.expr,e.x+8,e.y);
+  ctx.restore();
+}
+
+function rrect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+
+// Laser beam
+function drawLasers(){
+  lasers=lasers.filter(l=>l.life>0);
+  lasers.forEach(l=>{
+    ctx.save();
+    ctx.globalAlpha=l.life;
+    ctx.strokeStyle='#00e5ff';
+    ctx.shadowColor='#00e5ff';
+    ctx.shadowBlur=12;
+    ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(l.x,l.y1);ctx.lineTo(l.x,l.y2);ctx.stroke();
+    ctx.shadowBlur=0;
+    ctx.restore();
+    l.life-=0.12;
+  });
+}
+
+// Particles
+function spawnExp(x,y,color,n){
+  for(let i=0;i<n;i++){
+    const a=Math.PI*2/n*i+Math.random()*0.5;
+    const s=2+Math.random()*5;
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color,r:1.5+Math.random()*3});
+  }
+}
+
+function drawParticles(){
+  particles.forEach(p=>{
+    ctx.save();ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=4;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.1;p.life-=0.03;
+  });
+  particles=particles.filter(p=>p.life>0);
+}
+
+// Float score text
+const floats2=[];
+function spawnFloat(x,y,text,color){
+  floats2.push({x,y,text,color,life:1});
+}
+function drawFloats(){
+  floats2.forEach(f=>{
+    ctx.save();ctx.globalAlpha=f.life;
+    ctx.fillStyle=f.color;ctx.shadowColor=f.color;ctx.shadowBlur=8;
+    ctx.font='bold 16px "Orbitron",monospace';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(f.text,f.x,f.y);ctx.restore();
+    f.y-=1.2;f.life-=0.025;
+  });
+  for(let i=floats2.length-1;i>=0;i--) if(floats2[i].life<=0) floats2.splice(i,1);
+}
+
+// Ship control
+let mouseX=null;
+canvas.addEventListener('mousemove',e=>{
+  const r=canvas.getBoundingClientRect();
+  mouseX=e.clientX-r.left;
+});
+canvas.addEventListener('touchmove',e=>{
+  e.preventDefault();
+  const r=canvas.getBoundingClientRect();
+  mouseX=e.touches[0].clientX-r.left;
+},{passive:false});
+document.addEventListener('keydown',e=>{keys[e.key]=true;});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+
+// Fire
+function fireShot(){
+  if(!gameOn) return;
+  const val=parseInt(document.getElementById('ans').value);
+  if(isNaN(val)) return;
+
+  // find first matching enemy (closest to bottom = highest y)
+  const matching=enemies.filter(e=>e.ans===val).sort((a,b)=>b.y-a.y);
+  if(matching.length>0){
+    const target=matching[0];
+    // laser
+    lasers.push({x:ship.x,y1:ship.y-14,y2:target.y,life:1});
+    // explosion
+    spawnExp(target.x,target.y,target.col.stroke,20);
+    const pts=10*wave;
+    score+=pts;kills++;
+    spawnFloat(target.x,target.y-20,`+${pts}`,target.col.stroke);
+    enemies=enemies.filter(e=>e!==target);
+    flashAns('ok');
+    updateHUD();
+    checkWave();
+  } else {
+    flashAns('err');
+    // shake all enemies
+    enemies.forEach(e=>e.shaking=0.6);
+  }
+  document.getElementById('ans').value='';
+  document.getElementById('ans').focus();
+}
+
+function flashAns(type){
+  const el=document.getElementById('ans');
+  el.classList.remove('ok','err');void el.offsetWidth;
+  el.classList.add(type);
+  setTimeout(()=>el.classList.remove('ok','err'),350);
+}
+
+function updateHUD(){
+  document.getElementById('hud-score').textContent=score;
+  document.getElementById('hud-wave').textContent=wave;
+  for(let i=0;i<3;i++) document.getElementById('li'+i).classList.toggle('dead',i>=lives);
+}
+
+function loseLife(){
+  lives--;updateHUD();
+  if(lives<=0) endGame();
+}
+
+function checkWave(){
+  if(kills>0 && kills%10===0){
+    wave++;
+    spawnInterval=Math.max(900,2200-wave*180);
+    document.getElementById('hud-wave').textContent=wave;
+    showWaveBanner();
+  }
+}
+
+function showWaveBanner(){
+  const ov=document.getElementById('ov-wave');
+  document.getElementById('ov-wave-title').textContent=`WAVE ${wave}`;
+  const msgs=['','','+ გამრავლება!','+ გაყოფა!','+ ხარისხი!','+ რთული!','NIGHTMARE!'];
+  document.getElementById('ov-wave-sub').textContent=msgs[Math.min(wave-1,msgs.length-1)]||'';
+  ov.style.display='flex';
+  setTimeout(()=>ov.style.display='none',1800);
+}
+
+// Main loop
+let lastT=0;
+function loop(ts){
+  if(!gameOn){frameId=requestAnimationFrame(loop);return;}
+  const dt=ts-lastT;lastT=ts;
+
+  const cw=W(),ch=H();
+  ctx.clearRect(0,0,cw,ch);
+
+  // Stars
+  ctx.fillStyle='#000';ctx.fillRect(0,0,cw,ch);
+  stars.forEach(s=>{
+    s.y+=s.speed;if(s.y>ch){s.y=0;s.x=Math.random()*cw;}
+    ctx.globalAlpha=s.a;ctx.fillStyle='#fff';
+    ctx.beginPath();ctx.arc(s.x,s.y,s.r,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+
+  // Ship movement
+  if(mouseX!==null){
+    ship.targetX=mouseX;
+  }
+  if(keys['ArrowLeft']||keys['a']) ship.targetX=Math.max(20,ship.targetX-5);
+  if(keys['ArrowRight']||keys['d']) ship.targetX=Math.min(cw-20,ship.targetX+5);
+  ship.x+=(ship.targetX-ship.x)*0.12;
+  ship.x=Math.max(24,Math.min(cw-24,ship.x));
+  ship.y=ch-40;
+
+  // Spawn
+  if(ts-lastSpawn>spawnInterval && enemies.length<5+wave){
+    spawnEnemy();lastSpawn=ts;
+  }
+
+  // Update enemies
+  for(let i=enemies.length-1;i>=0;i--){
+    enemies[i].y+=enemies[i].speed;
+    if(enemies[i].y>ch+30){
+      loseLife();
+      spawnExp(enemies[i].x,ch-20,'#ff3d71',12);
+      spawnFloat(enemies[i].x,ch-30,'−1 🛸','#ff3d71');
+      enemies.splice(i,1);
+    } else {
+      drawEnemy(enemies[i]);
+    }
+  }
+
+  drawLasers();
+  drawParticles();
+  drawFloats();
+  drawShip(ship.x,ship.y);
+
+  frameId=requestAnimationFrame(loop);
+}
+
+function startGame(){
+  score=0;lives=3;wave=1;kills=0;
+  enemies=[];bullets=[];particles=[];lasers=[];floats2.length=0;
+  spawnInterval=2200;lastSpawn=0;gameOn=true;
+  resize();
+  ship={x:W()/2,y:H()-40,w:36,h:28,targetX:W()/2};
+  mouseX=null;
+  initStars();
+  updateHUD();
+  document.getElementById('ov-start').style.display='none';
+  document.getElementById('ov-dead').style.display='none';
+  document.getElementById('ov-wave').style.display='none';
+  document.getElementById('ans').disabled=false;
+  document.getElementById('fire-btn').disabled=false;
+  document.getElementById('ans').focus();
+  cancelAnimationFrame(frameId);
+  lastT=performance.now();
+  frameId=requestAnimationFrame(loop);
+}
+
+function endGame(){
+  gameOn=false;
+  document.getElementById('r-score').textContent=score;
+  document.getElementById('r-wave').textContent=wave;
+  document.getElementById('r-kills').textContent=kills;
+  document.getElementById('ov-dead').style.display='flex';
+  document.getElementById('ans').disabled=true;
+  document.getElementById('fire-btn').disabled=true;
+}
+
+document.getElementById('ans').addEventListener('keydown',e=>{if(e.key==='Enter')fireShot();});
+
+// Initial star draw
+initStars();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

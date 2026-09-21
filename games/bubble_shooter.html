@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bubble Shooter</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:#0d0d1a;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;font-family:system-ui,sans-serif;overflow:hidden;color:#fff;
+  user-select:none;
+}
+#wrap{display:flex;flex-direction:column;align-items:center;gap:10px;}
+#hud{
+  display:flex;gap:24px;align-items:center;
+  font-size:13px;letter-spacing:1px;color:rgba(255,255,255,0.5);
+}
+#hud span{color:#fff;font-weight:700;font-size:16px;}
+canvas{
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:8px;
+  cursor:crosshair;
+  display:block;
+  touch-action:none;
+}
+#next-wrap{
+  display:flex;align-items:center;gap:10px;
+  font-size:12px;color:rgba(255,255,255,0.4);letter-spacing:1px;
+}
+#next-canvas{border-radius:50%;}
+
+/* Overlays */
+.ov{
+  position:fixed;inset:0;background:rgba(0,0,0,0.88);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1.2rem;z-index:20;
+}
+.ov h2{font-size:28px;font-weight:700;letter-spacing:3px;}
+.ov p{font-size:13px;color:rgba(255,255,255,0.45);text-align:center;line-height:1.9;}
+.ov button{
+  padding:11px 34px;background:transparent;
+  border:1.5px solid rgba(255,255,255,0.4);border-radius:6px;
+  color:#fff;font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer;
+}
+.ov button:hover{background:rgba(255,255,255,0.1);}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    ქულა: <span id="score-el">0</span>
+    &nbsp;&nbsp;
+    რიგი: <span id="row-el">0</span>
+  </div>
+  <canvas id="gc"></canvas>
+  <div id="next-wrap">
+    შემდეგი: <canvas id="nc" width="30" height="30"></canvas>
+  </div>
+</div>
+
+<!-- Start -->
+<div class="ov" id="ov-start">
+  <h2>🫧 Bubble Shooter</h2>
+  <p>დააჭირე ან მიმართე, სადაც გინდა ესროლო<br>3 ან მეტი ერთნაირი ფერი — ყველა ფეთქდება!</p>
+  <button onclick="startGame()">▶ დაწყება</button>
+</div>
+
+<!-- Game Over -->
+<div class="ov" id="ov-over" style="display:none">
+  <h2 style="color:#ff5c5c;">თამაში დასრულდა</h2>
+  <p>ქულა: <strong id="final-score" style="color:#fff;font-size:22px;">0</strong></p>
+  <button onclick="startGame()">↺ თავიდან</button>
+</div>
+
+<!-- Win -->
+<div class="ov" id="ov-win" style="display:none">
+  <h2 style="color:#3ddc84;">🎉 გამარჯვება!</h2>
+  <p>ქულა: <strong id="win-score" style="color:#fff;font-size:22px;">0</strong></p>
+  <button onclick="startGame()">↺ კიდევ ერთხელ</button>
+</div>
+
+<script>
+// ── Constants ──────────────────────────────────
+const COLORS = ['#e84040','#3ddc84','#4da6ff','#ffcc00','#ff69b4','#ff8c00'];
+const R  = 18;          // bubble radius
+const DIA= R*2;
+const COLS = 11;
+const ROWS = 4;         // initial filled rows
+const DANGER_ROW = 12;  // lose if bubbles reach this row
+
+// Canvas sizing
+let CW, CH;
+let offsetX;            // left padding to centre grid
+
+// ── State ──────────────────────────────────────
+let grid = [];          // grid[row][col] = color | null
+let score = 0;
+let gameOver = false;
+let shootBubble = null; // {color, x, y, vx, vy}
+let nextColor = null;
+let aimAngle = -Math.PI/2; // straight up default
+let rafId;
+let newRowTimer = 0;    // frames until a new row is pushed
+const NEW_ROW_INTERVAL = 1800; // ~30s at 60fps
+
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+const nc     = document.getElementById('nc');
+const nctx   = nc.getContext('2d');
+
+// ── Sizing ─────────────────────────────────────
+function setupCanvas(){
+  const maxW = Math.min(480, window.innerWidth - 20);
+  CW = maxW;
+  CH = Math.min(600, window.innerHeight - 140);
+  canvas.width  = CW;
+  canvas.height = CH;
+  offsetX = (CW - COLS*DIA) / 2 + R;
+}
+
+// ── Grid helpers ───────────────────────────────
+function colX(col, row){ return offsetX + col*DIA + (row%2===1 ? R : 0); }
+function rowY(row)      { return R + row * R*1.73; }
+
+function bubbleAt(row, col){ return grid[row] && grid[row][col] != null ? grid[row][col] : null; }
+
+function initGrid(){
+  grid = [];
+  for(let r=0;r<ROWS;r++){
+    const cols = COLS - (r%2===1?1:0);
+    grid[r] = [];
+    for(let c=0;c<cols;c++) grid[r][c] = COLORS[Math.floor(Math.random()*COLORS.length)];
+  }
+  // empty rows below
+  for(let r=ROWS;r<DANGER_ROW+4;r++) grid[r]=[];
+}
+
+function pushNewRow(){
+  // shift all rows down
+  grid.unshift([]);
+  const cols = COLS - (0%2===1?1:0);
+  for(let c=0;c<cols;c++) grid[0][c]=COLORS[Math.floor(Math.random()*COLORS.length)];
+  // check lose condition
+  for(let c=0;c<COLS;c++){
+    if(bubbleAt(DANGER_ROW, c)){ endGame(); return; }
+  }
+}
+
+// ── Drawing ────────────────────────────────────
+function drawBubble(ctx, x, y, color, r=R, alpha=1){
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  // body
+  ctx.shadowColor = color; ctx.shadowBlur = 10;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
+  // shine
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath(); ctx.ellipse(x-r*0.28, y-r*0.28, r*0.28, r*0.18, -Math.PI/4, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawGrid(){
+  for(let r=0;r<grid.length;r++){
+    if(!grid[r]) continue;
+    for(let c=0;c<grid[r].length;c++){
+      const col = grid[r][c];
+      if(!col) continue;
+      const x = colX(c,r), y = rowY(r);
+      if(y > CH+DIA) continue;
+      drawBubble(ctx, x, y, col);
+    }
+  }
+}
+
+function drawAimLine(){
+  if(shootBubble) return;
+  const sx = CW/2, sy = CH - R - 8;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([6,10]);
+  ctx.beginPath();
+  // reflect off walls
+  let x=sx, y=sy, vx=Math.cos(aimAngle), vy=Math.sin(aimAngle);
+  ctx.moveTo(x,y);
+  for(let i=0;i<3;i++){
+    let t1 = vy<0?(y-R)/(-vy):9999;
+    let t2 = vx>0?(CW-R-x)/vx : vx<0?(R-x)/vx:9999;
+    const t = Math.min(t1,t2);
+    x+=vx*t; y+=vy*t;
+    ctx.lineTo(x,y);
+    if(y<=R) break;
+    vx=-vx;
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawShooter(){
+  const sx=CW/2, sy=CH-R-8;
+  // track
+  ctx.save();
+  ctx.fillStyle='rgba(255,255,255,0.06)';
+  ctx.beginPath();ctx.arc(sx,sy,R+4,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+  if(shootBubble) return;
+  drawBubble(ctx, sx, sy, nextColor);
+}
+
+function drawShootBubble(){
+  if(!shootBubble) return;
+  drawBubble(ctx, shootBubble.x, shootBubble.y, shootBubble.color);
+}
+
+function drawNextPreview(){
+  nctx.clearRect(0,0,30,30);
+  drawBubble(nctx,15,15,nextColor,12);
+}
+
+function drawDangerLine(){
+  const y = rowY(DANGER_ROW);
+  if(y>CH) return;
+  ctx.save();
+  ctx.strokeStyle='rgba(255,60,60,0.25)';
+  ctx.lineWidth=1;ctx.setLineDash([4,8]);
+  ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CW,y);ctx.stroke();
+  ctx.setLineDash([]);ctx.restore();
+}
+
+// ── Shooting ───────────────────────────────────
+function randomColor(){ return COLORS[Math.floor(Math.random()*COLORS.length)]; }
+
+function shoot(){
+  if(shootBubble || gameOver) return;
+  if(aimAngle > -Math.PI*0.05 || aimAngle < -Math.PI*0.95) return; // prevent flat shots
+  const speed = 14;
+  shootBubble = {
+    color: nextColor,
+    x: CW/2, y: CH-R-8,
+    vx: Math.cos(aimAngle)*speed,
+    vy: Math.sin(aimAngle)*speed
+  };
+  nextColor = randomColor();
+  drawNextPreview();
+}
+
+// ── Collision & snap ───────────────────────────
+function snapToGrid(bx, by, color){
+  let bestRow=-1, bestCol=-1, bestDist=9999;
+  for(let r=0;r<grid.length+2;r++){
+    const cols = COLS - (r%2===1?1:0);
+    for(let c=0;c<cols;c++){
+      if(bubbleAt(r,c)) continue;
+      const x=colX(c,r), y=rowY(r);
+      const d=Math.hypot(bx-x,by-y);
+      if(d<bestDist){ bestDist=d; bestRow=r; bestCol=c; }
+    }
+  }
+  // extend grid if needed
+  while(grid.length<=bestRow+1) grid.push([]);
+  if(!grid[bestRow]) grid[bestRow]=[];
+  grid[bestRow][bestCol]=color;
+  return {row:bestRow,col:bestCol};
+}
+
+function getNeighbours(row,col){
+  const nb=[];
+  const isOdd=row%2===1;
+  const dirs= isOdd
+    ? [[-1,0],[-1,1],[0,-1],[0,1],[1,0],[1,1]]
+    : [[-1,-1],[-1,0],[0,-1],[0,1],[1,-1],[1,0]];
+  for(const [dr,dc] of dirs){
+    const r2=row+dr, c2=col+dc;
+    if(r2>=0 && c2>=0 && grid[r2] && grid[r2][c2]!=null) nb.push([r2,c2]);
+  }
+  return nb;
+}
+
+function flood(startRow,startCol,matchColor){
+  const visited=new Set();
+  const queue=[[startRow,startCol]];
+  const result=[];
+  while(queue.length){
+    const [r,c]=queue.pop();
+    const key=r+','+c;
+    if(visited.has(key)) continue;
+    if(!grid[r]||grid[r][c]!==matchColor) continue;
+    visited.add(key);
+    result.push([r,c]);
+    getNeighbours(r,c).forEach(nb=>queue.push(nb));
+  }
+  return result;
+}
+
+function findFloating(){
+  // BFS from row 0 to find all connected bubbles
+  const connected=new Set();
+  const queue=[];
+  for(let c=0;c<COLS;c++) if(bubbleAt(0,c)) queue.push([0,c]);
+  while(queue.length){
+    const [r,c]=queue.shift();
+    const key=r+','+c;
+    if(connected.has(key)) continue;
+    if(!bubbleAt(r,c)) continue;
+    connected.add(key);
+    getNeighbours(r,c).forEach(nb=>queue.push(nb));
+  }
+  const floating=[];
+  for(let r=1;r<grid.length;r++){
+    if(!grid[r]) continue;
+    for(let c=0;c<grid[r].length;c++){
+      if(grid[r][c]&&!connected.has(r+','+c)) floating.push([r,c]);
+    }
+  }
+  return floating;
+}
+
+let popParticles=[];
+
+function popBubbles(cells,color){
+  cells.forEach(([r,c])=>{
+    const x=colX(c,r),y=rowY(r);
+    for(let i=0;i<12;i++){
+      const a=Math.PI*2/12*i+Math.random()*0.4;
+      const sp=2+Math.random()*4;
+      popParticles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:1,color,r:2+Math.random()*3});
+    }
+    grid[r][c]=null;
+  });
+  score += cells.length * 10;
+  document.getElementById('score-el').textContent=score;
+}
+
+function checkWin(){
+  for(let r=0;r<grid.length;r++)
+    for(let c=0;c<(grid[r]?.length||0);c++)
+      if(grid[r][c]) return false;
+  return true;
+}
+
+function onSnap(row,col,color){
+  // match
+  const cluster=flood(row,col,color);
+  if(cluster.length>=3){
+    popBubbles(cluster,color);
+    // floating
+    const floating=findFloating();
+    if(floating.length) popBubbles(floating,'#aaaaaa');
+    if(checkWin()){ setTimeout(winGame,400); return; }
+  }
+  // lose check
+  if(rowY(row)>=rowY(DANGER_ROW-1)){
+    endGame(); return;
+  }
+  document.getElementById('row-el').textContent = grid.filter(r=>r&&r.some(c=>c)).length;
+}
+
+// ── Game loop ──────────────────────────────────
+let lastT=0;
+function loop(ts){
+  rafId=requestAnimationFrame(loop);
+  if(gameOver) return;
+  const dt=ts-lastT; lastT=ts;
+
+  // push new row timer
+  newRowTimer++;
+  if(newRowTimer>=NEW_ROW_INTERVAL){ newRowTimer=0; pushNewRow(); }
+
+  ctx.clearRect(0,0,CW,CH);
+  // bg gradient
+  const g=ctx.createLinearGradient(0,0,0,CH);
+  g.addColorStop(0,'#0d0d1a');g.addColorStop(1,'#0a1428');
+  ctx.fillStyle=g;ctx.fillRect(0,0,CW,CH);
+
+  drawDangerLine();
+  drawGrid();
+  drawAimLine();
+
+  // move shoot bubble
+  if(shootBubble){
+    shootBubble.x+=shootBubble.vx;
+    shootBubble.y+=shootBubble.vy;
+    // wall bounce
+    if(shootBubble.x<=R){ shootBubble.x=R; shootBubble.vx*=-1; }
+    if(shootBubble.x>=CW-R){ shootBubble.x=CW-R; shootBubble.vx*=-1; }
+    // ceiling
+    if(shootBubble.y<=R){ shootBubble.y=R; shootBubble.vy*=-1; }
+    // check collision with grid bubbles
+    let hit=false;
+    outer: for(let r=0;r<grid.length;r++){
+      if(!grid[r]) continue;
+      for(let c=0;c<grid[r].length;c++){
+        if(!grid[r][c]) continue;
+        const x=colX(c,r),y=rowY(r);
+        if(Math.hypot(shootBubble.x-x,shootBubble.y-y)<DIA-2){
+          hit=true; break outer;
+        }
+      }
+    }
+    if(hit || shootBubble.y<=R+2){
+      const {row,col}=snapToGrid(shootBubble.x,shootBubble.y,shootBubble.color);
+      shootBubble=null;
+      onSnap(row,col,grid[row]?.[col]);
+    }
+    if(shootBubble) drawShootBubble();
+  }
+
+  drawShooter();
+
+  // particles
+  popParticles.forEach(p=>{
+    ctx.save();ctx.globalAlpha=p.life;
+    ctx.fillStyle=p.color;ctx.shadowColor=p.color;ctx.shadowBlur=4;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);ctx.fill();
+    ctx.restore();
+    p.x+=p.vx;p.y+=p.vy;p.vy+=0.1;p.life-=0.04;
+  });
+  popParticles=popParticles.filter(p=>p.life>0);
+}
+
+// ── Aim ───────────────────────────────────────
+function setAim(clientX, clientY){
+  const rect=canvas.getBoundingClientRect();
+  const sx=CW/2, sy=CH-R-8;
+  const dx=(clientX-rect.left)-sx;
+  const dy=(clientY-rect.top)-sy;
+  let a=Math.atan2(dy,dx);
+  a=Math.max(-Math.PI+0.05,Math.min(-0.05,a));
+  aimAngle=a;
+}
+
+canvas.addEventListener('mousemove',e=>setAim(e.clientX,e.clientY));
+canvas.addEventListener('click',e=>{setAim(e.clientX,e.clientY);shoot();});
+canvas.addEventListener('touchmove',e=>{e.preventDefault();setAim(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+canvas.addEventListener('touchend',e=>{e.preventDefault();shoot();},{passive:false});
+document.addEventListener('keydown',e=>{ if(e.key===' '||e.key==='Enter'){e.preventDefault();shoot();} });
+
+// ── Start / End ────────────────────────────────
+function startGame(){
+  setupCanvas();
+  initGrid();
+  score=0;gameOver=false;shootBubble=null;newRowTimer=0;
+  nextColor=randomColor();popParticles=[];
+  document.getElementById('score-el').textContent=0;
+  document.getElementById('row-el').textContent=ROWS;
+  document.getElementById('ov-start').style.display='none';
+  document.getElementById('ov-over').style.display='none';
+  document.getElementById('ov-win').style.display='none';
+  drawNextPreview();
+  cancelAnimationFrame(rafId);
+  lastT=performance.now();
+  rafId=requestAnimationFrame(loop);
+}
+
+function endGame(){
+  gameOver=true;
+  document.getElementById('final-score').textContent=score;
+  document.getElementById('ov-over').style.display='flex';
+}
+function winGame(){
+  gameOver=true;
+  document.getElementById('win-score').textContent=score;
+  document.getElementById('ov-win').style.display='flex';
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>საქართველო — გეოგრაფია</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b1220;--card:#131d2e;--border:rgba(255,255,255,0.07);
+  --accent:#4da6ff;--green:#3ddc84;--red:#ff5c5c;--yellow:#ffe600;
+  --text:#eef2ff;--muted:#4a6888;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Noto Sans Georgian',system-ui,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;
+  align-items:center;padding:1.2rem 0.75rem 2rem;
+}
+#wrap{width:100%;max-width:620px;display:flex;flex-direction:column;gap:12px;}
+
+/* Menu */
+#menu{display:flex;flex-direction:column;gap:14px;}
+#menu h1{font-size:22px;font-weight:900;display:flex;align-items:center;gap:10px;}
+#menu p{font-size:13px;color:var(--muted);line-height:1.8;}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.mode-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:16px 14px;cursor:pointer;
+  transition:border-color 0.15s,background 0.15s;text-align:center;
+  display:flex;flex-direction:column;gap:6px;
+}
+.mode-card:hover{border-color:rgba(77,166,255,0.4);background:rgba(77,166,255,0.06);}
+.mode-card.sel{border-color:rgba(77,166,255,0.7);background:rgba(77,166,255,0.1);}
+.mode-icon{font-size:26px;}
+.mode-name{font-size:13px;font-weight:700;}
+.mode-desc{font-size:11px;color:var(--muted);line-height:1.4;}
+#mode-count{font-size:11px;color:var(--muted);text-align:center;}
+.play-btn{
+  padding:13px;border-radius:10px;font-size:15px;font-weight:700;
+  background:rgba(77,166,255,0.12);border:1px solid rgba(77,166,255,0.4);
+  color:var(--accent);cursor:pointer;letter-spacing:1px;
+  font-family:'Noto Sans Georgian',sans-serif;transition:background 0.15s;display:none;
+}
+.play-btn:hover{background:rgba(77,166,255,0.22);}
+
+/* HUD */
+#hud{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.hpill{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:700;
+  background:rgba(255,255,255,0.04);border:0.5px solid var(--border);color:var(--muted);}
+.hpill span{color:var(--text);}
+#prog-bar{height:3px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;}
+#prog-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.4s;}
+
+/* Timer ring */
+#tring{position:relative;width:46px;height:46px;flex-shrink:0;}
+#tring svg{position:absolute;top:0;left:0;transform:rotate(-90deg);}
+#trc{fill:none;stroke:rgba(255,255,255,0.07);stroke-width:3.5;}
+#trf{fill:none;stroke:var(--accent);stroke-width:3.5;stroke-linecap:round;
+  stroke-dasharray:116;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke 0.5s;}
+#trn{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;}
+
+/* Question card */
+#qcard{background:var(--card);border:0.5px solid var(--border);border-radius:14px;padding:1.4rem;
+  display:flex;gap:12px;align-items:flex-start;}
+#qcat{font-size:10px;letter-spacing:2px;color:var(--muted);flex-shrink:0;padding-top:2px;}
+#qtxt{font-size:16px;font-weight:600;line-height:1.6;}
+
+/* Map hint */
+#map-wrap{background:var(--card);border:0.5px solid var(--border);border-radius:12px;
+  padding:10px;display:none;}
+#map-wrap.show{display:block;}
+#map-wrap svg{width:100%;height:auto;display:block;}
+
+/* Options */
+#opts{display:flex;flex-direction:column;gap:8px;}
+.opt{
+  padding:12px 15px;background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.08);border-radius:10px;
+  font-size:14px;font-weight:600;cursor:pointer;text-align:left;
+  color:var(--text);display:flex;align-items:center;gap:10px;
+  transition:background 0.12s,border-color 0.12s;
+  font-family:'Noto Sans Georgian',sans-serif;
+}
+.opt:hover:not(.lk){background:rgba(77,166,255,0.08);border-color:rgba(77,166,255,0.3);}
+.opt.ok{background:rgba(61,220,132,0.1);border-color:rgba(61,220,132,0.5);color:var(--green);}
+.opt.no{background:rgba(255,92,92,0.08);border-color:rgba(255,92,92,0.4);color:var(--red);}
+.opt.rv{background:rgba(61,220,132,0.06);border-color:rgba(61,220,132,0.25);color:rgba(61,220,132,0.75);}
+.ol{width:22px;height:22px;border-radius:5px;flex-shrink:0;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;letter-spacing:1px;
+  background:rgba(255,255,255,0.05);border:0.5px solid rgba(255,255,255,0.09);color:var(--muted);}
+.opt.ok .ol{background:rgba(61,220,132,0.18);border-color:var(--green);color:var(--green);}
+.opt.no .ol{background:rgba(255,92,92,0.18);border-color:var(--red);color:var(--red);}
+
+/* Feedback */
+#fb{min-height:40px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;
+  line-height:1.5;display:none;}
+#fb.ok{display:block;background:rgba(61,220,132,0.07);border:0.5px solid rgba(61,220,132,0.2);color:var(--green);}
+#fb.no{display:block;background:rgba(255,92,92,0.07);border:0.5px solid rgba(255,92,92,0.2);color:var(--red);}
+
+/* Next */
+#nxt{padding:12px;border-radius:10px;font-size:14px;font-weight:700;letter-spacing:1px;
+  background:rgba(77,166,255,0.1);border:1px solid rgba(77,166,255,0.35);color:var(--accent);
+  cursor:pointer;text-align:center;display:none;font-family:'Noto Sans Georgian',sans-serif;}
+#nxt:hover{background:rgba(77,166,255,0.18);}
+
+/* Results */
+#res{display:none;flex-direction:column;align-items:center;gap:16px;text-align:center;}
+.rcircle{width:110px;height:110px;border-radius:50%;
+  background:rgba(77,166,255,0.07);border:2px solid rgba(77,166,255,0.25);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.rcircle .big{font-size:34px;font-weight:900;color:var(--accent);}
+.rcircle .sm{font-size:11px;color:var(--muted);}
+.rgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;}
+.rb{background:var(--card);border:0.5px solid var(--border);border-radius:10px;padding:10px 8px;text-align:center;}
+.rb .rl{font-size:8px;letter-spacing:1.5px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;}
+.rb .rv{font-size:20px;font-weight:700;}
+</style>
+</head>
+<body>
+<div id="wrap">
+
+<!-- MENU -->
+<div id="menu">
+  <h1>🗺️ საქართველოს გეოგრაფია</h1>
+  <p>კითხვები ქართული ქალაქების, რეგიონების, მდინარეების და მთების შესახებ</p>
+  <div class="mode-grid" id="mode-grid"></div>
+  <div id="mode-count"></div>
+  <button class="play-btn" id="play-btn" onclick="startQuiz()">▶ დაწყება</button>
+</div>
+
+<!-- QUIZ -->
+<div id="quiz" style="display:none;flex-direction:column;gap:11px;">
+  <div id="hud">
+    <div class="hpill">ქულა: <span id="hsc">0</span></div>
+    <div id="tring">
+      <svg width="46" height="46" viewBox="0 0 46 46">
+        <circle id="trc" cx="23" cy="23" r="18.5"/>
+        <circle id="trf" cx="23" cy="23" r="18.5"/>
+      </svg>
+      <div id="trn">15</div>
+    </div>
+    <div class="hpill"><span id="hcr">0</span>/<span id="htot">0</span></div>
+  </div>
+  <div id="prog-bar"><div id="prog-fill" style="width:0%"></div></div>
+  <div id="map-wrap"><svg id="geo-map" viewBox="0 0 600 220" xmlns="http://www.w3.org/2000/svg"></svg></div>
+  <div id="qcard"><div id="qcat">კ.01</div><div id="qtxt">...</div></div>
+  <div id="opts"></div>
+  <div id="fb"></div>
+  <div id="nxt" onclick="nextQ()">შემდეგი →</div>
+</div>
+
+<!-- RESULTS -->
+<div id="res">
+  <h2 id="rtitle">შედეგი</h2>
+  <div class="rcircle"><div class="big" id="rpct">0%</div><div class="sm" id="rfrac">0/0</div></div>
+  <div style="font-size:26px;letter-spacing:4px;" id="rstars">⭐</div>
+  <div style="font-size:13px;color:var(--muted);" id="rmsg"></div>
+  <div class="rgrid">
+    <div class="rb"><div class="rl">ქულა</div><div class="rv" style="color:var(--accent)" id="rsc">0</div></div>
+    <div class="rb"><div class="rl">სწრაფი</div><div class="rv" style="color:var(--yellow)" id="rft">0</div></div>
+    <div class="rb"><div class="rl">სერია</div><div class="rv" style="color:var(--green)" id="rsk">0</div></div>
+  </div>
+  <button class="play-btn" style="display:block;width:100%;" onclick="backToMenu()">↺ თავიდან</button>
+</div>
+
+</div><!-- wrap -->
+
+<script>
+// ── Audio ─────────────────────────────────────────
+let ac=null;
+function ga(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();return ac;}
+function tn(f,t='sine',d=0.1,v=0.15){
+  try{const a=ga(),o=a.createOscillator(),g=a.createGain();
+  o.connect(g);g.connect(a.destination);o.type=t;
+  o.frequency.setValueAtTime(f,a.currentTime);
+  g.gain.setValueAtTime(v,a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+d);
+  o.start();o.stop(a.currentTime+d+0.01);}catch(e){}
+}
+const SFX={
+  ok(){ tn(523,'sine',0.07,0.14); setTimeout(()=>tn(659,'sine',0.09,0.11),70); },
+  no(){ tn(200,'sawtooth',0.15,0.15); },
+  tick(){ tn(900,'square',0.03,0.05); },
+  out(){ tn(150,'sawtooth',0.2,0.17); },
+  start(){ [330,440,550].forEach((f,i)=>setTimeout(()=>tn(f,'sine',0.1,0.11),i*55)); },
+  win(){ [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tn(f,'sine',0.18,0.13),i*110)); },
+};
+
+// ── Simplified Georgia SVG outline ───────────────
+// Regions as clickable paths with approximate shapes
+const GEO_SVG = `
+<defs>
+  <style>
+    .reg{fill:#1a2a40;stroke:#2a4060;stroke-width:1;cursor:default;transition:fill 0.2s;}
+    .reg.hi{fill:#2a4a70;}
+    .reg.ok{fill:rgba(61,220,132,0.3);stroke:#3ddc84;}
+    .reg.no{fill:rgba(255,92,92,0.2);stroke:#ff5c5c;}
+    .rl{fill:rgba(255,255,255,0.55);font-size:7px;font-family:'Noto Sans Georgian',sans-serif;
+        text-anchor:middle;dominant-baseline:middle;pointer-events:none;}
+    .river{fill:none;stroke:#4da6ff;stroke-width:1.5;opacity:0.6;}
+    .dot{fill:#ffe600;stroke:#0b1220;stroke-width:1;}
+  </style>
+</defs>
+<!-- Abkhazia -->
+<path class="reg" id="r-abkhazia" d="M60,15 L160,10 L175,30 L170,55 L120,60 L80,55 L50,40 Z"/>
+<text class="rl" x="115" y="35">აფხაზეთი</text>
+<!-- Samegrelo -->
+<path class="reg" id="r-samegrelo" d="M80,55 L120,60 L170,55 L165,90 L130,100 L100,95 L75,80 Z"/>
+<text class="rl" x="120" y="75">სამეგრელო</text>
+<!-- Guria -->
+<path class="reg" id="r-guria" d="M75,80 L100,95 L95,120 L65,125 L55,105 Z"/>
+<text class="rl" x="77" y="103">გურია</text>
+<!-- Adjara -->
+<path class="reg" id="r-adjara" d="M65,125 L95,120 L100,145 L80,155 L58,145 Z"/>
+<text class="rl" x="78" y="138">აჭარა</text>
+<!-- Imereti -->
+<path class="reg" id="r-imereti" d="M100,95 L130,100 L165,90 L175,110 L160,130 L130,135 L100,125 L95,120 Z"/>
+<text class="rl" x="133" y="113">იმერეთი</text>
+<!-- Racha -->
+<path class="reg" id="r-racha" d="M130,60 L170,55 L200,60 L210,80 L175,90 L165,90 L130,100 Z"/>
+<text class="rl" x="170" y="75">რაჭა</text>
+<!-- Svaneti -->
+<path class="reg" id="r-svaneti" d="M120,18 L175,10 L210,15 L220,40 L200,60 L170,55 L120,60 Z"/>
+<text class="rl" x="167" y="37">სვანეთი</text>
+<!-- Samtskhe-Javakheti -->
+<path class="reg" id="r-samtskhe" d="M100,125 L130,135 L160,130 L170,155 L145,175 L110,170 L90,155 L95,135 Z"/>
+<text class="rl" x="130" y="152">სამცხე-ჯავახ.</text>
+<!-- Shida Kartli -->
+<path class="reg" id="r-shida" d="M175,90 L210,80 L250,85 L265,105 L245,125 L210,130 L175,120 L160,130 L175,110 Z"/>
+<text class="rl" x="215" y="108">შიდა ქართლი</text>
+<!-- Mtskheta-Mtianeti -->
+<path class="reg" id="r-mtskheta" d="M200,40 L250,35 L290,45 L300,65 L265,75 L250,85 L210,80 L220,40 Z"/>
+<text class="rl" x="250" y="60">მცხეთა-მთ.</text>
+<!-- South Ossetia marker -->
+<path class="reg" id="r-ossetia" d="M210,80 L250,85 L265,75 L265,105 L245,125 L210,130 L175,120 L175,90 Z" style="fill:#1e2e44;stroke:#334455;"/>
+<text class="rl" x="220" y="103" style="font-size:6px;opacity:0.5;">სამ. ოს.</text>
+<!-- Kvemo Kartli -->
+<path class="reg" id="r-kvemo" d="M210,130 L245,125 L280,135 L295,160 L265,175 L230,175 L200,165 L185,150 L170,155 L160,130 Z"/>
+<text class="rl" x="230" y="152">ქვემო ქართლი</text>
+<!-- Kakheti -->
+<path class="reg" id="r-kakheti" d="M265,75 L300,65 L360,60 L390,80 L400,110 L380,140 L340,155 L295,155 L280,135 L265,105 Z"/>
+<text class="rl" x="330" y="108">კახეთი</text>
+
+<!-- Rivers -->
+<!-- Mtkvari/Kura -->
+<path class="river" d="M390,80 Q350,100 295,110 Q260,118 230,130 Q200,145 180,155"/>
+<!-- Rioni -->
+<path class="river" d="M210,80 Q175,88 145,95 Q115,100 85,80"/>
+<!-- Alazani -->
+<path class="river" d="M390,80 Q370,90 350,100 Q330,110 300,115"/>
+<!-- Aragvi -->
+<path class="river" d="M265,45 Q265,60 265,75 Q265,90 265,105"/>
+<!-- Enguri -->
+<path class="river" d="M175,30 Q165,50 165,70 Q165,85 140,95"/>
+
+<!-- City dots -->
+<circle class="dot" id="dot-tbilisi" cx="295" cy="105" r="4"/>
+<text class="rl" x="295" y="97" style="fill:#ffe600;font-size:8px;">თბილისი</text>
+
+<circle class="dot" cx="130" cy="90" r="3" style="fill:#aaa;"/>
+<text class="rl" x="130" y="83" style="fill:#aaa;font-size:7px;">ქუთაისი</text>
+
+<circle class="dot" cx="78" cy="135" r="3" style="fill:#aaa;"/>
+<text class="rl" x="78" y="128" style="fill:#aaa;font-size:7px;">ბათუმი</text>
+
+<circle class="dot" cx="133" cy="148" r="3" style="fill:#aaa;"/>
+<text class="rl" x="133" y="141" style="fill:#aaa;font-size:7px;">ახალციხე</text>
+
+<circle class="dot" cx="330" cy="90" r="3" style="fill:#aaa;"/>
+<text class="rl" x="330" y="83" style="fill:#aaa;font-size:7px;">თელავი</text>
+
+<circle class="dot" cx="250" cy="108" r="3" style="fill:#aaa;"/>
+<text class="rl" x="250" y="101" style="fill:#aaa;font-size:7px;">გორი</text>
+
+<circle class="dot" cx="295" cy="148" r="3" style="fill:#aaa;"/>
+<text class="rl" x="295" y="141" style="fill:#aaa;font-size:7px;">რუსთავი</text>
+
+<circle class="dot" cx="165" cy="50" r="3" style="fill:#aaa;"/>
+<text class="rl" x="165" y="43" style="fill:#aaa;font-size:7px;">მესტია</text>
+
+<!-- Legend -->
+<line x1="10" y1="195" x2="35" y2="195" stroke="#4da6ff" stroke-width="2"/>
+<text x="38" y="198" style="fill:rgba(77,166,255,0.7);font-size:7px;font-family:sans-serif;">მდინარე</text>
+<circle cx="85" cy="195" r="3" fill="#ffe600"/>
+<text x="91" y="198" style="fill:rgba(255,230,0,0.7);font-size:7px;font-family:sans-serif;">დედაქ.</text>
+`;
+
+// ── Question Bank ─────────────────────────────────
+const MODES = [
+  {
+    id:'cities',icon:'🏙️',name:'ქალაქები',
+    desc:'რომელ რეგიონში\nმდებარეობს',
+    color:'rgba(77,166,255,0.3)',
+    qs:[
+      {q:'თბილისი — რომელ მხარეშია?', a:'მცხეთა-მთიანეთი / შიდა ქართლი',
+        opts:['მცხეთა-მთიანეთი / შიდა ქართლი','კახეთი','ქვემო ქართლი','იმერეთი'], map:'r-mtskheta'},
+      {q:'ქუთაისი — რომელ მხარის ცენტრია?', a:'იმერეთი',
+        opts:['იმერეთი','სამეგრელო','გურია','რაჭა'], map:'r-imereti'},
+      {q:'ბათუმი — რომელ ავტ. რესპ. ცენტრია?', a:'აჭარა',
+        opts:['აჭარა','გურია','სამცხე','სამეგრელო'], map:'r-adjara'},
+      {q:'თელავი — რომელ მხარის ცენტრია?', a:'კახეთი',
+        opts:['კახეთი','შიდა ქართლი','მცხეთა','ქვემო ქართლი'], map:'r-kakheti'},
+      {q:'გორი — რომელ მხარეშია?', a:'შიდა ქართლი',
+        opts:['შიდა ქართლი','ქვემო ქართლი','მცხეთა-მთიანეთი','კახეთი'], map:'r-shida'},
+      {q:'ახალციხე — რომელ მხარის ცენტრია?', a:'სამცხე-ჯავახეთი',
+        opts:['სამცხე-ჯავახეთი','ქვემო ქართლი','კახეთი','გურია'], map:'r-samtskhe'},
+      {q:'ზუგდიდი — რომელ მხარის ცენტრია?', a:'სამეგრელო-ზემო სვანეთი',
+        opts:['სამეგრელო-ზემო სვანეთი','გურია','იმერეთი','რაჭა'], map:'r-samegrelo'},
+      {q:'რუსთავი — რომელ მხარეშია?', a:'ქვემო ქართლი',
+        opts:['ქვემო ქართლი','შიდა ქართლი','კახეთი','მცხეთა-მთიანეთი'], map:'r-kvemo'},
+      {q:'მცხეთა — ისტორიულად რა იყო?', a:'საქართველოს პირველი დედაქალაქი',
+        opts:['საქართველოს პირველი დედაქალაქი','პორტი','სასაზღვრო ციხე','სამხედრო ბაზა'], map:'r-mtskheta'},
+      {q:'ფოთი — სად მდებარეობს?', a:'შავი ზღვის სანაპირო, სამეგრელო',
+        opts:['შავი ზღვის სანაპირო, სამეგრელო','კახეთი','ქვემო ქართლი','სამცხე'], map:'r-samegrelo'},
+      {q:'ამბროლაური — სად მდებარეობს?', a:'რაჭა-ლეჩხუმი',
+        opts:['რაჭა-ლეჩხუმი','სვანეთი','იმერეთი','სამეგრელო'], map:'r-racha'},
+      {q:'მესტია — სად მდებარეობს?', a:'ზემო სვანეთი',
+        opts:['ზემო სვანეთი','რაჭა','სამეგრელო','მცხეთა-მთ.'], map:'r-svaneti'},
+      {q:'ბოლნისი — რომელ მხარეშია?', a:'ქვემო ქართლი',
+        opts:['ქვემო ქართლი','შიდა ქართლი','კახეთი','სამცხე'], map:'r-kvemo'},
+      {q:'სიღნაღი — რომელ მხარეშია?', a:'კახეთი',
+        opts:['კახეთი','შიდა ქართლი','მცხეთა-მთ.','ქვემო ქართლი'], map:'r-kakheti'},
+      {q:'ოზურგეთი — რომელ მხარის ცენტრია?', a:'გურია',
+        opts:['გურია','აჭარა','სამეგრელო','იმერეთი'], map:'r-guria'},
+    ]
+  },
+  {
+    id:'rivers',icon:'🌊',name:'მდინარეები',
+    desc:'სად მიედინება,\nრომელ მხარეში',
+    color:'rgba(77,166,255,0.5)',
+    qs:[
+      {q:'თბილისის გვერდით მდინარე?', a:'მტკვარი',
+        opts:['მტკვარი','რიონი','არაგვი','ალაზანი']},
+      {q:'კახეთის მთავარი მდინარე?', a:'ალაზანი',
+        opts:['ალაზანი','მტკვარი','ენგური','ხრამი']},
+      {q:'დასავლეთ საქართველოს მთავარი მდინარე?', a:'რიონი',
+        opts:['რიონი','მტკვარი','ენგური','ლიახვი']},
+      {q:'რიონი — სად ჩაედინება ზღვაში?', a:'ფოთთან',
+        opts:['ფოთთან','ბათუმთან','სოხუმთან','ქობულეთთან']},
+      {q:'ენგური — სად მიედინება?', a:'სამეგრელოში, შავ ზღვამდე',
+        opts:['სამეგრელოში, შავ ზღვამდე','კახეთში','ქვემო ქართლში','სამცხეში']},
+      {q:'არაგვი — სად ჩაედინება?', a:'მტკვარში',
+        opts:['მტკვარში','რიონში','ალაზანში','ენგურში']},
+      {q:'ლიახვი — სად ჩაედინება?', a:'მტკვარში',
+        opts:['მტკვარში','ალაზანში','რიონში','ენგურში']},
+      {q:'ხრამი — სად ჩაედინება?', a:'მტკვარში',
+        opts:['მტკვარში','ალაზანში','ენგურში','რიონში']},
+      {q:'ჯვარის ჰიდრო-ელ.სადგური — რომელ მდინარეზეა?', a:'ენგური',
+        opts:['ენგური','მტკვარი','ხრამი','რიონი']},
+      {q:'ძირულა — სად ჩაედინება?', a:'რიონში',
+        opts:['რიონში','მტკვარში','ენგურში','ალაზანში']},
+      {q:'ქართლის ვაკეზე გამავალი მდინარე?', a:'მტკვარი',
+        opts:['მტკვარი','რიონი','ენგური','ალაზანი']},
+      {q:'ფანავრის წყალი — სად მდებარეობს?', a:'სამცხე-ჯავახეთი',
+        opts:['სამცხე-ჯავახეთი','კახეთი','კახეთი','შიდა ქართლი']},
+    ]
+  },
+  {
+    id:'regions',icon:'🗺️',name:'რეგიონები',
+    desc:'12 მხარე, ცენტრები,\nმახასიათებლები',
+    color:'rgba(61,220,132,0.3)',
+    qs:[
+      {q:'საქართველოში რამდენი ადმინ. მხარეა?', a:'12',
+        opts:['12','9','15','10']},
+      {q:'ყველაზე დიდი მხარე ფართობით?', a:'კახეთი',
+        opts:['კახეთი','შიდა ქართლი','სამცხე-ჯავახეთი','სამეგრელო']},
+      {q:'ყველაზე პატარა მხარე?', a:'გურია',
+        opts:['გურია','რაჭა-ლეჩხუმი','მცხეთა-მთ.','სამეგრელო']},
+      {q:'ვენახებით ყველაზე ცნობილი მხარე?', a:'კახეთი',
+        opts:['კახეთი','იმერეთი','სამეგრელო','ქვემო ქართლი']},
+      {q:'სამეგრელო-ზემო სვანეთის ადმ.ცენტრი?', a:'ზუგდიდი',
+        opts:['ზუგდიდი','სენაკი','ფოთი','მესტია']},
+      {q:'ქვემო ქართლის ცენტრი?', a:'რუსთავი',
+        opts:['რუსთავი','მარნეული','გარდაბანი','სამგორი']},
+      {q:'ვარძია — რომელ მხარეშია?', a:'სამცხე-ჯავახეთი',
+        opts:['სამცხე-ჯავახეთი','კახეთი','შიდა ქართლი','ქვემო ქართლი'], map:'r-samtskhe'},
+      {q:'გელათის მონასტერი — რომელ მხარეშია?', a:'იმერეთი',
+        opts:['იმერეთი','სამეგრელო','გურია','შიდა ქართლი'], map:'r-imereti'},
+      {q:'ბაკურიანი — რომელ მხარეშია?', a:'სამცხე-ჯავახეთი',
+        opts:['სამცხე-ჯავახეთი','შიდა ქართლი','კახეთი','მცხეთა-მთ.'], map:'r-samtskhe'},
+      {q:'ანანური — რომელ მხარეშია?', a:'მცხეთა-მთიანეთი',
+        opts:['მცხეთა-მთიანეთი','შიდა ქართლი','კახეთი','ქვემო ქართლი'], map:'r-mtskheta'},
+      {q:'შავი ზღვის სანაპირო — რომელ მხარეებს ეხება?', a:'სამეგრელო, გურია, აჭარა',
+        opts:['სამეგრელო, გურია, აჭარა','კახეთი, შიდა ქართლი','სამცხე, ქვემო ქართლი','რაჭა, სვანეთი']},
+      {q:'ყველაზე მაღალი მხარე (ზ.დ.)?', a:'სვანეთი',
+        opts:['სვანეთი','რაჭა','მცხეთა-მთ.','კახეთი']},
+    ]
+  },
+  {
+    id:'mountains',icon:'⛰️',name:'მთები',
+    desc:'მწვერვალები, სიმაღლე,\nქედები',
+    color:'rgba(255,230,0,0.3)',
+    qs:[
+      {q:'საქართველოს უმაღლესი მთა?', a:'შხარა (5203 მ)',
+        opts:['შხარა (5203 მ)','ყაზბეგი (5047 მ)','ადიში','ტეტნულდი']},
+      {q:'ყაზბეგი — რომელ მხარეშია?', a:'მცხეთა-მთიანეთი',
+        opts:['მცხეთა-მთიანეთი','სვანეთი','კახეთი','შიდა ქართლი'], map:'r-mtskheta'},
+      {q:'შხარა — რომელ ქედშია?', a:'კავკასიონი',
+        opts:['კავკასიონი','მცირე კავკასიონი','მესხეთის ქ.','ლოქის ქ.']},
+      {q:'ელბრუსი — სად მდებარეობს?', a:'საქართველო-რუსეთის საზღვარზე',
+        opts:['საქართველო-რუსეთის საზღვარზე','სვანეთის ცენტრში','კახეთში','შიდა ქართლში']},
+      {q:'კავკასიონის ქედი — რა მიმართულებით?', a:'დასავლეთ-აღმოსავლეთი',
+        opts:['დასავლეთ-აღმოსავლეთი','ჩრდ.-სამხრ.','ჩრდ.-აღმ.','სამხ.-დასავლ.']},
+      {q:'მცირე კავკასიონი — სად მდებარეობს?', a:'სამხრეთ საქართველო',
+        opts:['სამხრეთ საქართველო','ჩრდ. საქართველო','კახეთი','სამეგრელო']},
+      {q:'ლიხის ქედი — რას ყოფს?', a:'დასავლეთ და აღმოსავლეთ საქართველოს',
+        opts:['დასავლეთ და აღმოსავლეთ საქართველოს','კახეთს და შიდა ქართლს','სვანეთს და სამეგრელოს','სამცხეს და ქვ.ქართლს']},
+      {q:'სამხრეთ-კავკასიის ვულკანური მთა?', a:'სამსარი (ჯავახეთი)',
+        opts:['სამსარი (ჯავახეთი)','შხარა (სვანეთი)','ყაზბეგი (მცხეთა)','ადიში (სვანეთი)']},
+    ]
+  },
+];
+
+// State
+let selModes=new Set(), questions=[], qIdx=0, score=0, corr=0;
+let tv=15, tInt=null, lkd=false, streak=0, maxStr=0, fast=0;
+
+// ── Build menu ────────────────────────────────────
+function buildMenu(){
+  const grid=document.getElementById('mode-grid');
+  grid.innerHTML='';
+  MODES.forEach(m=>{
+    const d=document.createElement('div');
+    d.className='mode-card';d.dataset.id=m.id;
+    d.innerHTML=`<div class="mode-icon">${m.icon}</div><div class="mode-name">${m.name}</div><div class="mode-desc">${m.desc}</div>`;
+    d.addEventListener('click',()=>toggleMode(m.id,d));
+    grid.appendChild(d);
+  });
+}
+buildMenu();
+
+function toggleMode(id,el){
+  if(selModes.has(id)){selModes.delete(id);el.classList.remove('sel');}
+  else{selModes.add(id);el.classList.add('sel');}
+  const n=selModes.size;
+  document.getElementById('mode-count').textContent=n>0?`${n} კატეგორია შერჩეულია`:'';
+  document.getElementById('play-btn').style.display=n>0?'block':'none';
+}
+
+function shuffle(a){return[...a].sort(()=>Math.random()-0.5);}
+
+function startQuiz(){
+  SFX.start();
+  const cats=MODES.filter(m=>selModes.has(m.id));
+  let pool=[];cats.forEach(c=>pool.push(...c.qs.map(q=>({...q,cat:c}))));
+  questions=shuffle(pool).slice(0,Math.min(20,pool.length));
+  qIdx=0;score=0;corr=0;streak=0;maxStr=0;fast=0;
+  document.getElementById('menu').style.display='none';
+  document.getElementById('quiz').style.display='flex';
+  document.getElementById('htot').textContent=questions.length;
+  // inject map SVG
+  document.getElementById('geo-map').innerHTML=GEO_SVG;
+  showQ();
+}
+
+function showQ(){
+  if(qIdx>=questions.length){endQuiz();return;}
+  const q=questions[qIdx];
+  lkd=false;
+  document.getElementById('fb').className='fb';
+  document.getElementById('fb').textContent='';
+  document.getElementById('nxt').style.display='none';
+  document.getElementById('hsc').textContent=score;
+  document.getElementById('hcr').textContent=corr;
+  const pct=(qIdx/questions.length)*100;
+  document.getElementById('prog-fill').style.width=pct+'%';
+
+  // map highlight
+  const mw=document.getElementById('map-wrap');
+  document.querySelectorAll('#geo-map .reg').forEach(r=>r.className.baseVal='reg');
+  if(q.map){
+    mw.className='map-wrap show';
+    const el=document.getElementById(q.map);
+    if(el) el.classList.add('hi');
+  } else {
+    mw.className='map-wrap';
+  }
+
+  document.getElementById('qcat').textContent=`${q.cat.icon} ${qIdx+1}/${questions.length}`;
+  document.getElementById('qtxt').textContent=q.q;
+
+  const oc=document.getElementById('opts');
+  oc.innerHTML='';
+  const ls=['A','B','C','D'];
+  shuffle(q.opts).forEach((o,i)=>{
+    const b=document.createElement('button');
+    b.className='opt';b.dataset.v=o;
+    b.innerHTML=`<span class="ol">${ls[i]}</span>${o}`;
+    b.addEventListener('click',()=>ans(o,q.a,tv));
+    oc.appendChild(b);
+  });
+
+  startTimer(15);
+}
+
+function startTimer(s){
+  clearInterval(tInt);tv=s;updateRing(s,15);
+  tInt=setInterval(()=>{
+    tv--;updateRing(tv,15);
+    document.getElementById('trn').textContent=tv;
+    if(tv<=5)SFX.tick();
+    if(tv<=0){clearInterval(tInt);SFX.out();streak=0;timeout();}
+  },1000);
+}
+
+function updateRing(v,mx){
+  const f=document.getElementById('trf'),n=document.getElementById('trn');
+  f.style.strokeDashoffset=(116*(1-v/mx))+'';
+  const c=v<=5?'#ff5c5c':v<=8?'#ffe600':'#4da6ff';
+  f.style.stroke=c;n.style.color=c;n.textContent=v;
+}
+
+function ans(ch,ca,tr){
+  if(lkd)return;lkd=true;clearInterval(tInt);
+  const ok=ch===ca,ft=tr>=10;
+  document.querySelectorAll('.opt').forEach(b=>{
+    b.classList.add('lk');
+    if(b.dataset.v===ca) b.classList.add(ok?'ok':'rv');
+    if(b.dataset.v===ch&&!ok) b.classList.add('no');
+  });
+  // map highlight
+  const q=questions[qIdx];
+  if(q.map){
+    const el=document.getElementById(q.map);
+    if(el){el.classList.remove('hi');el.classList.add(ok?'ok':'no');}
+  }
+  const fb=document.getElementById('fb');
+  if(ok){
+    SFX.ok();corr++;streak++;if(streak>maxStr)maxStr=streak;
+    const pts=100+(ft?50:0)+(streak>1?(streak-1)*20:0);
+    score+=pts;if(ft)fast++;
+    fb.className='fb ok';
+    fb.textContent=`✓ სწორია! +${pts}${ft?' ⚡':''}${streak>1?' 🔥×'+streak:''}`;
+  } else {
+    SFX.no();streak=0;
+    fb.className='fb no';
+    fb.textContent=`✗ სწორი პასუხია: ${ca}`;
+  }
+  document.getElementById('hsc').textContent=score;
+  document.getElementById('nxt').style.display='block';
+}
+
+function timeout(){
+  lkd=true;
+  const q=questions[qIdx];
+  document.querySelectorAll('.opt').forEach(b=>{b.classList.add('lk');if(b.dataset.v===q.a)b.classList.add('rv');});
+  const fb=document.getElementById('fb');
+  fb.className='fb no';fb.textContent=`⏰ სწ. პ.: ${q.a}`;
+  document.getElementById('nxt').style.display='block';
+}
+
+function nextQ(){qIdx++;showQ();}
+
+function endQuiz(){
+  clearInterval(tInt);
+  document.getElementById('quiz').style.display='none';
+  const rs=document.getElementById('res');
+  rs.style.display='flex';
+  const pct=Math.round(corr/questions.length*100);
+  document.getElementById('rpct').textContent=pct+'%';
+  document.getElementById('rfrac').textContent=`${corr}/${questions.length}`;
+  document.getElementById('rsc').textContent=score;
+  document.getElementById('rft').textContent=fast;
+  document.getElementById('rsk').textContent=maxStr;
+  document.getElementById('rstars').textContent=pct>=90?'⭐⭐⭐':pct>=60?'⭐⭐':pct>=30?'⭐':'';
+  const msgs=['კიდევ სცადე!','გაიმეორე!','კარგი!','ძალიან კარგი!','შესანიშნავი!'];
+  document.getElementById('rmsg').textContent=msgs[Math.min(Math.floor(pct/25),4)];
+  document.getElementById('rtitle').textContent=pct>=80?'🎉 შესანიშნავი!':pct>=50?'👍 კარგი!':'📚 გაიმეორე';
+  if(pct>=80)SFX.win();
+}
+
+function backToMenu(){
+  selModes.clear();
+  document.querySelectorAll('.mode-card').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('play-btn').style.display='none';
+  document.getElementById('mode-count').textContent='';
+  document.getElementById('res').style.display='none';
+  document.getElementById('menu').style.display='flex';
+}
+</script>
+</body>
+</html>

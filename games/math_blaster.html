@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Math Blaster — მათემატიკის არკადა</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+Georgian:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050a14;
+  --grid: #0a1628;
+  --accent: #00e5ff;
+  --accent2: #ff3d71;
+  --accent3: #ffe600;
+  --accent4: #39ff7a;
+  --text: #e8f4ff;
+  --muted: #4a7090;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Mono', monospace;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  user-select: none;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+#wrap {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+  padding: 0 1rem;
+}
+
+/* HUD */
+#hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  margin-bottom: 0.5rem;
+}
+.hud-block { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.hud-label { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+.hud-value { font-size: 22px; font-weight: 700; color: var(--accent); font-family: 'Space Mono', monospace; }
+#lives-row { display: flex; gap: 6px; }
+.heart { font-size: 18px; transition: transform 0.2s; }
+.heart.lost { filter: grayscale(1); opacity: 0.3; }
+#level-badge {
+  padding: 4px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  background: rgba(0,229,255,0.07);
+}
+
+/* Canvas */
+#canvas-wrap {
+  position: relative;
+  border: 1px solid rgba(0,229,255,0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(0,10,25,0.8);
+}
+canvas { display: block; }
+
+/* Scanline overlay */
+#canvas-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+  pointer-events: none;
+}
+
+/* Input row */
+#input-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 0.75rem;
+  align-items: stretch;
+}
+#answer-input {
+  flex: 1;
+  background: rgba(0,229,255,0.05);
+  border: 1.5px solid rgba(0,229,255,0.3);
+  border-radius: 4px;
+  color: var(--accent);
+  font-family: 'Space Mono', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  padding: 10px;
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+  letter-spacing: 4px;
+}
+#answer-input:focus { border-color: var(--accent); background: rgba(0,229,255,0.10); }
+#answer-input.flash-ok { border-color: var(--accent4); background: rgba(57,255,122,0.12); color: var(--accent4); }
+#answer-input.flash-err { border-color: var(--accent2); background: rgba(255,61,113,0.12); color: var(--accent2); animation: shake 0.3s; }
+#fire-btn {
+  padding: 10px 22px;
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  color: var(--bg);
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+#fire-btn:hover { background: #33eeff; }
+#fire-btn:active { transform: scale(0.96); }
+#hint-text {
+  text-align: center;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 0.5rem;
+  letter-spacing: 1px;
+}
+
+/* Overlays */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5,10,20,0.92);
+  z-index: 10;
+  gap: 1.5rem;
+}
+.overlay h2 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--accent);
+  text-shadow: 0 0 20px var(--accent);
+}
+.overlay .big-score {
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--accent3);
+  text-shadow: 0 0 30px var(--accent3);
+  line-height: 1;
+}
+.overlay p { font-size: 13px; color: var(--muted); letter-spacing: 1px; font-family: 'Noto Sans Georgian', sans-serif; }
+.overlay button {
+  padding: 12px 32px;
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  border-radius: 4px;
+  color: var(--accent);
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s;
+}
+.overlay button:hover { background: rgba(0,229,255,0.1); box-shadow: 0 0 20px rgba(0,229,255,0.3); }
+.ka { font-family: 'Noto Sans Georgian', sans-serif; }
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  60% { transform: translateX(6px); }
+}
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div class="hud-block">
+      <div class="hud-label">ქულა</div>
+      <div class="hud-value" id="score-val">0</div>
+    </div>
+    <div id="level-badge">LEVEL <span id="level-val">1</span></div>
+    <div class="hud-block">
+      <div class="hud-label">სიცოცხლე</div>
+      <div id="lives-row">
+        <span class="heart" id="h0">❤️</span>
+        <span class="heart" id="h1">❤️</span>
+        <span class="heart" id="h2">❤️</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="canvas-wrap">
+    <canvas id="gc" width="608" height="400"></canvas>
+
+    <div class="overlay" id="start-overlay">
+      <h2>MATH BLASTER</h2>
+      <p class="ka" style="text-align:center;line-height:1.8;">მფრინავი გამოსახულებები ეშვება ქვევით<br>სწრაფად შეიყვანე სწორი პასუხი!</p>
+      <button onclick="startGame()">▶ თამაშის დაწყება</button>
+    </div>
+
+    <div class="overlay" id="gameover-overlay" style="display:none;">
+      <h2 class="ka">თამაში დასრულდა</h2>
+      <div class="big-score" id="final-score">0</div>
+      <p class="ka">ქულა</p>
+      <button onclick="startGame()">↺ თავიდან</button>
+    </div>
+  </div>
+
+  <div id="input-row">
+    <input id="answer-input" type="number" placeholder="?" autocomplete="off" inputmode="numeric" disabled />
+    <button id="fire-btn" onclick="fireAnswer()" disabled>FIRE ⚡</button>
+  </div>
+  <div id="hint-text" class="ka">Enter ან FIRE ღილაკი — პასუხის გასაგზავნად</div>
+</div>
+
+<script>
+const canvas = document.getElementById('gc');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+let score = 0, lives = 3, level = 1, frameId = null;
+let blocks = [], particles = [], combo = 0;
+let lastBlockTime = 0, blockInterval = 2200;
+let gameRunning = false;
+
+const COLORS = ['#00e5ff','#ffe600','#39ff7a','#ff9f43','#a855f7'];
+
+function genProblem() {
+  const ops = ['+', '-', '×', '÷'];
+  const maxOp = level < 2 ? 1 : level < 3 ? 2 : level < 5 ? 3 : 4;
+  const op = ops[Math.floor(Math.random() * (maxOp + 1))];
+  let a, b, ans, expr;
+  if (op === '+') {
+    a = ri(1, 10 + level * 3); b = ri(1, 10 + level * 3);
+    ans = a + b; expr = `${a} + ${b}`;
+  } else if (op === '-') {
+    a = ri(5, 20 + level * 2); b = ri(1, a);
+    ans = a - b; expr = `${a} − ${b}`;
+  } else if (op === '×') {
+    a = ri(2, 5 + level); b = ri(2, 5 + level);
+    ans = a * b; expr = `${a} × ${b}`;
+  } else {
+    ans = ri(2, 9 + level); b = ri(2, 9);
+    a = ans * b; expr = `${a} ÷ ${b}`;
+  }
+  return { expr, ans };
+}
+
+function ri(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+function spawnBlock() {
+  const { expr, ans } = genProblem();
+  const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+  const speed = 0.5 + level * 0.18 + Math.random() * 0.3;
+  const x = ri(60, W - 120);
+  blocks.push({ expr, ans, x, y: -40, speed, color, shake: 0, alpha: 1, w: 0 });
+}
+
+function spawnParticles(x, y, color, count) {
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 / count) * i + Math.random() * 0.5;
+    const spd = 2 + Math.random() * 4;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd,
+      life: 1, color,
+      size: 2 + Math.random() * 4
+    });
+  }
+}
+
+function flashInput(type) {
+  const inp = document.getElementById('answer-input');
+  inp.classList.remove('flash-ok', 'flash-err');
+  void inp.offsetWidth;
+  inp.classList.add(type === 'ok' ? 'flash-ok' : 'flash-err');
+  setTimeout(() => inp.classList.remove('flash-ok', 'flash-err'), 400);
+}
+
+function fireAnswer() {
+  if (!gameRunning) return;
+  const val = parseInt(document.getElementById('answer-input').value);
+  if (isNaN(val)) return;
+  let hit = false;
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    if (blocks[i].ans === val) {
+      const b = blocks[i];
+      spawnParticles(b.x, b.y, b.color, 18);
+      combo++;
+      const pts = 10 * level + (combo > 1 ? combo * 5 : 0);
+      score += pts;
+      showFloatText(b.x, b.y, `+${pts}`, b.color);
+      blocks.splice(i, 1);
+      flashInput('ok');
+      hit = true;
+      updateHUD();
+      checkLevel();
+      break;
+    }
+  }
+  if (!hit) { flashInput('err'); combo = 0; }
+  document.getElementById('answer-input').value = '';
+  document.getElementById('answer-input').focus();
+}
+
+const floats = [];
+function showFloatText(x, y, text, color) {
+  floats.push({ x, y, text, color, life: 1 });
+}
+
+function loseLife() {
+  lives--;
+  combo = 0;
+  updateHearts();
+  if (lives <= 0) endGame();
+}
+
+function updateHUD() {
+  document.getElementById('score-val').textContent = score;
+}
+
+function updateHearts() {
+  for (let i = 0; i < 3; i++) {
+    document.getElementById('h' + i).classList.toggle('lost', i >= lives);
+  }
+}
+
+function checkLevel() {
+  const newLevel = 1 + Math.floor(score / 150);
+  if (newLevel !== level) {
+    level = Math.min(newLevel, 8);
+    blockInterval = Math.max(800, 2200 - level * 200);
+    document.getElementById('level-val').textContent = level;
+    showFloatText(W / 2, H / 2, `LEVEL ${level}!`, '#ffe600');
+  }
+}
+
+function drawBlock(b) {
+  ctx.save();
+  const pad = 16, r = 6;
+  const metrics = ctx.measureText(b.expr);
+  const tw = Math.max(metrics.width + pad * 2, 110);
+  b.w = tw;
+  const th = 44;
+  const x = b.x - tw / 2, y = b.y - th / 2;
+
+  if (b.shake > 0) {
+    ctx.translate(Math.sin(b.shake * 20) * 3, 0);
+    b.shake -= 0.05;
+    if (b.shake < 0) b.shake = 0;
+  }
+
+  ctx.globalAlpha = b.alpha;
+
+  // glow
+  ctx.shadowColor = b.color;
+  ctx.shadowBlur = 18;
+
+  // bg
+  ctx.fillStyle = 'rgba(5,10,20,0.85)';
+  roundRect(ctx, x, y, tw, th, r);
+  ctx.fill();
+
+  // border
+  ctx.strokeStyle = b.color;
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, x, y, tw, th, r);
+  ctx.stroke();
+
+  // danger tint near bottom
+  const danger = Math.max(0, (b.y - (H * 0.6)) / (H * 0.35));
+  if (danger > 0) {
+    ctx.fillStyle = `rgba(255,61,113,${danger * 0.25})`;
+    roundRect(ctx, x, y, tw, th, r);
+    ctx.fill();
+  }
+
+  ctx.shadowBlur = 0;
+
+  // text
+  ctx.fillStyle = b.color;
+  ctx.font = `bold 18px "Space Mono", monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(b.expr, b.x, b.y);
+
+  ctx.restore();
+}
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.arcTo(x + w, y, x + w, y + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+}
+
+function drawGrid() {
+  ctx.strokeStyle = 'rgba(0,229,255,0.04)';
+  ctx.lineWidth = 0.5;
+  for (let x = 0; x < W; x += 40) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+  for (let y = 0; y < H; y += 40) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  // danger zone line
+  ctx.strokeStyle = 'rgba(255,61,113,0.15)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6, 6]);
+  ctx.beginPath(); ctx.moveTo(0, H - 50); ctx.lineTo(W, H - 50); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawParticles() {
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.life;
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawFloats() {
+  floats.forEach(f => {
+    ctx.save();
+    ctx.globalAlpha = f.life;
+    ctx.fillStyle = f.color;
+    ctx.shadowColor = f.color;
+    ctx.shadowBlur = 10;
+    ctx.font = `bold 20px "Space Mono", monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(f.text, f.x, f.y);
+    ctx.restore();
+  });
+}
+
+let lastTime = 0;
+function loop(ts) {
+  if (!gameRunning) return;
+  const dt = ts - lastTime;
+  lastTime = ts;
+
+  ctx.clearRect(0, 0, W, H);
+  drawGrid();
+
+  // spawn
+  if (ts - lastBlockTime > blockInterval) {
+    const maxBlocks = 2 + Math.floor(level / 2);
+    if (blocks.length < maxBlocks) spawnBlock();
+    lastBlockTime = ts;
+  }
+
+  // update blocks
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    blocks[i].y += blocks[i].speed;
+    if (blocks[i].y > H + 30) {
+      loseLife();
+      showFloatText(blocks[i].x, H - 60, '−1 ❤', '#ff3d71');
+      blocks.splice(i, 1);
+    } else {
+      if (blocks[i].y > H - 80) blocks[i].shake = Math.max(blocks[i].shake, 0.6);
+      drawBlock(blocks[i]);
+    }
+  }
+
+  // update particles
+  drawParticles();
+  particles.forEach(p => { p.x += p.vx; p.y += p.vy; p.vy += 0.12; p.life -= 0.035; });
+  particles = particles.filter(p => p.life > 0);
+
+  // floats
+  drawFloats();
+  floats.forEach(f => { f.y -= 1; f.life -= 0.02; });
+  for (let i = floats.length - 1; i >= 0; i--) { if (floats[i].life <= 0) floats.splice(i, 1); }
+
+  frameId = requestAnimationFrame(loop);
+}
+
+function startGame() {
+  score = 0; lives = 3; level = 1; combo = 0;
+  blocks = []; particles = []; floats.length = 0;
+  blockInterval = 2200;
+  lastBlockTime = 0;
+  gameRunning = true;
+  updateHUD();
+  updateHearts();
+  document.getElementById('level-val').textContent = 1;
+  document.getElementById('start-overlay').style.display = 'none';
+  document.getElementById('gameover-overlay').style.display = 'none';
+  document.getElementById('answer-input').disabled = false;
+  document.getElementById('fire-btn').disabled = false;
+  document.getElementById('answer-input').value = '';
+  document.getElementById('answer-input').focus();
+  cancelAnimationFrame(frameId);
+  lastTime = performance.now();
+  frameId = requestAnimationFrame(loop);
+}
+
+function endGame() {
+  gameRunning = false;
+  cancelAnimationFrame(frameId);
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('gameover-overlay').style.display = 'flex';
+  document.getElementById('answer-input').disabled = true;
+  document.getElementById('fire-btn').disabled = true;
+}
+
+document.getElementById('answer-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') fireAnswer();
+});
+
+// responsive canvas
+function resize() {
+  const wrap = document.getElementById('canvas-wrap');
+  const mw = Math.min(608, window.innerWidth - 32);
+  const scale = mw / 608;
+  canvas.style.width = mw + 'px';
+  canvas.style.height = (400 * scale) + 'px';
+}
+window.addEventListener('resize', resize);
+resize();
+</script>
+</body>
+</html>

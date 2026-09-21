@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Typing Racer — ქართული ანბანი</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+Georgian:wght@400;600;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d0d;
+  --surface: #161616;
+  --border: #2a2a2a;
+  --accent: #f0c040;
+  --accent2: #e84040;
+  --green: #3ddc84;
+  --blue: #4da6ff;
+  --text: #f0ede8;
+  --muted: #606060;
+  --track-bg: #1a1a1a;
+  --asphalt: #222222;
+  --line: #444;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Space Mono',monospace;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:1.5rem 1rem;
+}
+
+#wrap{width:100%;max-width:660px;}
+
+/* HUD */
+#hud{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:10px;
+  margin-bottom:1rem;
+}
+.hud-card{
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:6px;
+  padding:10px 12px;
+  text-align:center;
+}
+.hud-label{font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:4px;}
+.hud-value{font-size:22px;font-weight:700;color:var(--accent);}
+.hud-value.green{color:var(--green);}
+.hud-value.blue{color:var(--blue);}
+
+/* Track */
+#track-wrap{
+  background:var(--asphalt);
+  border:0.5px solid var(--border);
+  border-radius:8px;
+  overflow:hidden;
+  position:relative;
+  height:130px;
+  margin-bottom:1rem;
+}
+/* road lines */
+#track-wrap::before{
+  content:'';
+  position:absolute;
+  top:50%;
+  left:0;right:0;
+  height:2px;
+  background:repeating-linear-gradient(90deg, var(--line) 0, var(--line) 30px, transparent 30px, transparent 60px);
+  transform:translateY(-50%);
+  animation:roadMove 0.4s linear infinite;
+}
+@keyframes roadMove{from{background-position:0 0;}to{background-position:-60px 0;}}
+/* side strips */
+#track-wrap::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(var(--bg) 0, var(--bg) 18px, transparent 18px, transparent calc(100% - 18px), var(--bg) calc(100% - 18px));
+  pointer-events:none;
+}
+/* checkered flags at ends */
+.flag-start, .flag-end{
+  position:absolute;
+  top:0;bottom:0;
+  width:6px;
+  background:repeating-conic-gradient(#fff 0% 25%, #111 0% 50%) 0 0/10px 10px;
+  z-index:2;
+  opacity:0.5;
+}
+.flag-start{left:0;}
+.flag-end{right:0;}
+
+#progress-bar{
+  position:absolute;
+  bottom:0;left:0;right:0;
+  height:3px;
+  background:var(--border);
+}
+#progress-fill{
+  height:100%;
+  background:var(--accent);
+  transition:width 0.2s;
+  width:0%;
+}
+
+/* Car */
+#car{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  font-size:36px;
+  line-height:1;
+  transition:left 0.25s cubic-bezier(.4,0,.2,1);
+  left:2%;
+  filter:drop-shadow(0 0 8px rgba(240,192,64,0.6));
+  z-index:3;
+}
+#car.boost{animation:carBoost 0.3s ease;}
+@keyframes carBoost{0%{transform:translateY(-50%) scale(1);}50%{transform:translateY(-50%) scale(1.2);}100%{transform:translateY(-50%) scale(1);}}
+
+/* Typing area */
+#typing-section{
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:8px;
+  padding:1.25rem;
+  margin-bottom:1rem;
+}
+#word-display{
+  font-family:'Noto Sans Georgian',sans-serif;
+  font-size:28px;
+  font-weight:600;
+  text-align:center;
+  letter-spacing:3px;
+  margin-bottom:1rem;
+  min-height:42px;
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:2px;
+}
+.char{color:var(--muted);transition:color 0.08s;}
+.char.correct{color:var(--green);}
+.char.wrong{color:var(--accent2);text-decoration:underline;}
+.char.cursor{
+  border-bottom:2px solid var(--accent);
+  color:var(--text);
+}
+
+#typing-input{
+  width:100%;
+  background:rgba(255,255,255,0.04);
+  border:1.5px solid var(--border);
+  border-radius:6px;
+  color:var(--text);
+  font-family:'Noto Sans Georgian',sans-serif;
+  font-size:20px;
+  text-align:center;
+  padding:10px;
+  outline:none;
+  transition:border-color 0.15s;
+  caret-color:var(--accent);
+}
+#typing-input:focus{border-color:rgba(240,192,64,0.5);}
+#typing-input.flash-ok{border-color:var(--green);background:rgba(61,220,132,0.08);}
+#typing-input.flash-err{border-color:var(--accent2);background:rgba(232,64,64,0.08);animation:shake 0.25s;}
+@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-5px);}75%{transform:translateX(5px);}}
+
+/* Words queue */
+#queue-wrap{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  justify-content:center;
+  min-height:32px;
+}
+.queue-word{
+  font-family:'Noto Sans Georgian',sans-serif;
+  font-size:13px;
+  padding:4px 10px;
+  border-radius:4px;
+  background:var(--bg);
+  border:0.5px solid var(--border);
+  color:var(--muted);
+}
+.queue-word.next{border-color:rgba(240,192,64,0.4);color:var(--text);}
+
+/* Overlay */
+.overlay{
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.88);
+  z-index:20;
+  gap:1.25rem;
+  padding:2rem;
+}
+.overlay h2{
+  font-size:26px;font-weight:700;
+  letter-spacing:3px;
+  color:var(--accent);
+  text-shadow:0 0 20px rgba(240,192,64,0.4);
+}
+.overlay .ka{font-family:'Noto Sans Georgian',sans-serif;}
+.stats-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  width:100%;
+  max-width:320px;
+}
+.stat-box{
+  background:var(--surface);
+  border:0.5px solid var(--border);
+  border-radius:6px;
+  padding:12px;
+  text-align:center;
+}
+.stat-box .lbl{font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;}
+.stat-box .val{font-size:24px;font-weight:700;color:var(--accent);}
+.stat-box .val.g{color:var(--green);}
+.stat-box .val.b{color:var(--blue);}
+.overlay button{
+  padding:12px 36px;
+  background:transparent;
+  border:1.5px solid var(--accent);
+  border-radius:6px;
+  color:var(--accent);
+  font-family:'Space Mono',monospace;
+  font-size:14px;
+  font-weight:700;
+  letter-spacing:2px;
+  cursor:pointer;
+  transition:background 0.15s;
+}
+.overlay button:hover{background:rgba(240,192,64,0.1);}
+.level-badge-big{
+  font-size:13px;
+  padding:6px 18px;
+  border-radius:20px;
+  border:1px solid var(--border);
+  color:var(--muted);
+  letter-spacing:2px;
+}
+.timer-ring{
+  font-size:48px;
+  font-weight:700;
+  color:var(--accent);
+  min-width:80px;
+  text-align:center;
+}
+.timer-ring.danger{color:var(--accent2);animation:pulse 0.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.5;}}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div class="hud-card">
+      <div class="hud-label">WPM</div>
+      <div class="hud-value green" id="wpm-val">0</div>
+    </div>
+    <div class="hud-card">
+      <div class="hud-label">სიტყვები</div>
+      <div class="hud-value blue" id="words-val">0</div>
+    </div>
+    <div class="hud-card">
+      <div class="hud-label">დრო</div>
+      <div class="hud-value" id="timer-val">60</div>
+    </div>
+  </div>
+
+  <div id="track-wrap">
+    <div class="flag-start"></div>
+    <div class="flag-end"></div>
+    <div id="car">🏎️</div>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+  </div>
+
+  <div id="typing-section">
+    <div id="word-display"></div>
+    <input id="typing-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="აქ დაიწყე აკრეფა..." disabled />
+  </div>
+
+  <div id="queue-wrap"></div>
+</div>
+
+<!-- Start overlay -->
+<div class="overlay" id="start-overlay">
+  <h2>TYPING RACER</h2>
+  <p class="ka" style="text-align:center;color:var(--muted);font-size:14px;line-height:1.9;">ქართული სიტყვები გამოჩნდება ეკრანზე<br>ჩქარა ჩაწერე — მანქანა გაქრება!</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;">
+    <button onclick="startGame(60)"><span class="ka" style="font-size:12px;">⏱ 60 წამი</span></button>
+    <button onclick="startGame(90)"><span class="ka" style="font-size:12px;">⏱ 90 წამი</span></button>
+    <button onclick="startGame(120)"><span class="ka" style="font-size:12px;">⏱ 120 წამი</span></button>
+  </div>
+</div>
+
+<!-- End overlay -->
+<div class="overlay" id="end-overlay" style="display:none;">
+  <h2 class="ka">დასრულდა!</h2>
+  <div class="stats-grid">
+    <div class="stat-box"><div class="lbl">WPM</div><div class="val g" id="res-wpm">0</div></div>
+    <div class="stat-box"><div class="lbl">სიტყვები</div><div class="val b" id="res-words">0</div></div>
+    <div class="stat-box"><div class="lbl">სიზუსტე</div><div class="val" id="res-acc">0%</div></div>
+    <div class="stat-box"><div class="lbl">შეცდომები</div><div class="val" style="color:var(--accent2)" id="res-err">0</div></div>
+  </div>
+  <button onclick="location.reload()">↺ <span class="ka">თავიდან</span></button>
+</div>
+
+<script>
+const WORDS = [
+  // მარტივი
+  'მამა','დედა','შვილი','სახლი','მზე','მთა','ველი','წყალი','ცა','ქვა',
+  'ხელი','თვალი','ყური','პური','ღვინო','კარი','მაგიდა','სკამი','წიგნი','კალამი',
+  'ძაღლი','კატა','ფრინველი','ხე','ყვავილი','მდინარე','ტყე','ქალაქი','სოფელი','გზა',
+  // საშუალო
+  'სწავლა','მასწავლებელი','მოსწავლე','სკოლა','კლასი','გაკვეთილი','საქართველო',
+  'თბილისი','მეგობარი','ოჯახი','სიყვარული','ბედნიერება','მუსიკა','ხელოვნება',
+  'კომპიუტერი','ტელეფონი','ინტერნეტი','პროგრამა','ტექნოლოგია',
+  // რთული
+  'განათლება','დემოკრატია','კულტურა','ისტორია','გეოგრაფია','მათემატიკა',
+  'ლიტერატურა','ფიზიკა','ქიმია','ბიოლოგია','ეკონომიკა','ფილოსოფია',
+  'გარემოსდაცვა','მდგრადობა','ინოვაცია','განვითარება','თანამშრომლობა',
+];
+
+let timeLeft, totalTime, timerInterval, startTs;
+let wordsTyped = 0, errors = 0, attempts = 0;
+let queue = [], currentWord = '', currentIdx = 0;
+let gameActive = false;
+
+function shuffle(a){ return [...a].sort(()=>Math.random()-0.5); }
+
+function buildQueue(){
+  const pool = shuffle(WORDS);
+  queue = [...pool, ...shuffle(WORDS), ...shuffle(WORDS)];
+}
+
+function startGame(secs){
+  totalTime = secs; timeLeft = secs;
+  wordsTyped = 0; errors = 0; attempts = 0; currentIdx = 0;
+  gameActive = true;
+  document.getElementById('start-overlay').style.display = 'none';
+  document.getElementById('end-overlay').style.display = 'none';
+  buildQueue();
+  nextWord();
+  renderQueue();
+  document.getElementById('typing-input').disabled = false;
+  document.getElementById('typing-input').focus();
+  document.getElementById('timer-val').textContent = timeLeft;
+  document.getElementById('car').style.left = '2%';
+  document.getElementById('progress-fill').style.width = '0%';
+  startTs = Date.now();
+  timerInterval = setInterval(tick, 1000);
+}
+
+function tick(){
+  timeLeft--;
+  const el = document.getElementById('timer-val');
+  el.textContent = timeLeft;
+  el.className = 'hud-value' + (timeLeft <= 10 ? ' danger' : '');
+  if(timeLeft <= 0){ clearInterval(timerInterval); endGame(); }
+  updateWPM();
+}
+
+function nextWord(){
+  currentWord = queue[currentIdx % queue.length];
+  currentIdx++;
+  renderWord('');
+  document.getElementById('typing-input').value = '';
+}
+
+function renderWord(typed){
+  const display = document.getElementById('word-display');
+  display.innerHTML = '';
+  for(let i=0;i<currentWord.length;i++){
+    const span = document.createElement('span');
+    span.className = 'char';
+    span.textContent = currentWord[i];
+    if(i < typed.length){
+      span.className = 'char ' + (typed[i] === currentWord[i] ? 'correct' : 'wrong');
+    } else if(i === typed.length){
+      span.className = 'char cursor';
+    }
+    display.appendChild(span);
+  }
+}
+
+function renderQueue(){
+  const wrap = document.getElementById('queue-wrap');
+  wrap.innerHTML = '';
+  for(let i=0;i<6;i++){
+    const w = queue[(currentIdx + i) % queue.length];
+    const div = document.createElement('div');
+    div.className = 'queue-word' + (i===0?' next':'');
+    div.textContent = w;
+    wrap.appendChild(div);
+  }
+}
+
+function updateWPM(){
+  const elapsed = Math.max((Date.now()-startTs)/60000, 0.001);
+  const wpm = Math.round(wordsTyped / elapsed);
+  document.getElementById('wpm-val').textContent = wpm;
+  document.getElementById('words-val').textContent = wordsTyped;
+}
+
+function updateCar(){
+  const maxWords = totalTime / 2;
+  const pct = Math.min(wordsTyped / maxWords * 100, 96);
+  document.getElementById('car').style.left = pct + '%';
+  document.getElementById('progress-fill').style.width = pct + '%';
+  const car = document.getElementById('car');
+  car.classList.remove('boost');
+  void car.offsetWidth;
+  car.classList.add('boost');
+}
+
+function flashInput(type){
+  const inp = document.getElementById('typing-input');
+  inp.classList.remove('flash-ok','flash-err');
+  void inp.offsetWidth;
+  inp.classList.add(type==='ok'?'flash-ok':'flash-err');
+  setTimeout(()=>inp.classList.remove('flash-ok','flash-err'),300);
+}
+
+document.getElementById('typing-input').addEventListener('input', function(e){
+  if(!gameActive) return;
+  const val = this.value;
+  renderWord(val);
+
+  // check if space or word complete
+  const trimmed = val.trimEnd();
+  const hasSpace = val.endsWith(' ');
+
+  if(hasSpace && trimmed.length > 0){
+    attempts++;
+    if(trimmed === currentWord){
+      wordsTyped++;
+      flashInput('ok');
+    } else {
+      errors++;
+      flashInput('err');
+    }
+    nextWord();
+    renderQueue();
+    updateWPM();
+    updateCar();
+    return;
+  }
+
+  // auto-complete if exact match and same length
+  if(val === currentWord && val.length === currentWord.length){
+    attempts++;
+    wordsTyped++;
+    flashInput('ok');
+    nextWord();
+    renderQueue();
+    updateWPM();
+    updateCar();
+  }
+});
+
+function endGame(){
+  gameActive = false;
+  document.getElementById('typing-input').disabled = true;
+  const elapsed = Math.max((Date.now()-startTs)/60000, 0.001);
+  const wpm = Math.round(wordsTyped/elapsed);
+  const acc = attempts > 0 ? Math.round((wordsTyped/attempts)*100) : 100;
+  document.getElementById('res-wpm').textContent = wpm;
+  document.getElementById('res-words').textContent = wordsTyped;
+  document.getElementById('res-acc').textContent = acc+'%';
+  document.getElementById('res-err').textContent = errors;
+  document.getElementById('end-overlay').style.display = 'flex';
+}
+</script>
+</body>
+</html>

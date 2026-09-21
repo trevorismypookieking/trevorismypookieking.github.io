@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>რიცხვების დალაგება — მათემატიკის თამაში</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #f5f5f3; color: #1a1a18; min-height: 100vh; display: flex; align-items: flex-start; justify-content: center; padding: 2rem 1rem; }
+  #app { width: 100%; max-width: 620px; background: #fff; border-radius: 16px; border: 0.5px solid #ddd; padding: 1.75rem; }
+  .hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+  .hdr h1 { font-size: 18px; font-weight: 500; }
+  .badge { font-size: 13px; padding: 4px 12px; border-radius: 8px; background: #f1efe8; color: #5f5e5a; border: 0.5px solid #d3d1c7; }
+  .badge span { font-weight: 500; color: #1a1a18; }
+  .progress-bar { height: 4px; border-radius: 2px; background: #e0e0dc; margin-bottom: 1.5rem; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 2px; background: #378ADD; transition: width 0.4s; }
+  .round-info { font-size: 12px; color: #888780; margin-bottom: 0.5rem; }
+  .instruction { font-size: 14px; color: #5f5e5a; margin-bottom: 1.25rem; }
+  .instruction strong { font-weight: 500; color: #1a1a18; }
+  .target-row { display: flex; gap: 10px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .slot { flex: 1; min-width: 80px; height: 68px; border-radius: 8px; border: 1.5px dashed #b4b2a9; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #888780; position: relative; transition: background 0.15s; }
+  .slot.over { background: #e6f1fb; border-color: #378ADD; }
+  .slot.filled { border-style: solid; border-color: #d3d1c7; }
+  .slot-label { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font-size: 10px; color: #888780; }
+  .cards-row { display: flex; gap: 10px; flex-wrap: wrap; min-height: 68px; padding: 10px; border-radius: 12px; border: 0.5px solid #d3d1c7; background: #f1efe8; }
+  .card { height: 52px; min-width: 72px; padding: 0 12px; border-radius: 8px; background: #fff; border: 0.5px solid #b4b2a9; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 500; color: #1a1a18; cursor: grab; user-select: none; transition: transform 0.1s; }
+  .card:active { cursor: grabbing; transform: scale(1.06); }
+  .card.dragging { opacity: 0.4; }
+  .card.correct { background: #EAF3DE; border-color: #639922; color: #3B6D11; }
+  .card.wrong { background: #FCEBEB; border-color: #E24B4A; color: #A32D2D; }
+  .actions { display: flex; gap: 10px; margin-top: 1.25rem; }
+  button { font-size: 14px; padding: 8px 18px; border-radius: 8px; cursor: pointer; border: 0.5px solid #b4b2a9; background: transparent; color: #1a1a18; transition: background 0.15s; }
+  button:hover { background: #f1efe8; }
+  button.primary { background: #e6f1fb; border-color: #185FA5; color: #0C447C; font-weight: 500; }
+  button.primary:hover { background: #B5D4F4; }
+  .feedback { margin-top: 1rem; padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 500; display: none; }
+  .feedback.ok { background: #EAF3DE; color: #3B6D11; border: 0.5px solid #97C459; display: block; }
+  .feedback.err { background: #FCEBEB; color: #A32D2D; border: 0.5px solid #F09595; display: block; }
+  .finish-box { text-align: center; padding: 2rem 1rem; }
+  .finish-box .big { font-size: 42px; font-weight: 500; margin-bottom: 0.5rem; }
+  .finish-box .sub { font-size: 15px; color: #5f5e5a; margin-bottom: 1.5rem; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="hdr">
+    <h1>რიცხვების დალაგება</h1>
+    <div class="badge">ქულა: <span id="score-display">0</span></div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="prog" style="width:0%"></div></div>
+  <div id="round-info" class="round-info"></div>
+  <div id="game-area"></div>
+</div>
+
+<script>
+const rounds = [
+  { label:"მარტივი — დაალაგე ზრდადობით", items:[{expr:"3+2",val:5},{expr:"10−4",val:6},{expr:"1+1",val:2},{expr:"9−3",val:6},{expr:"4+0",val:4}], dir:"asc" },
+  { label:"გამრავლება — ზრდადობით", items:[{expr:"2×4",val:8},{expr:"3×3",val:9},{expr:"1×7",val:7},{expr:"5×2",val:10},{expr:"3×2",val:6}], dir:"asc" },
+  { label:"შერეული — კლებადობით", items:[{expr:"20÷4",val:5},{expr:"3×6",val:18},{expr:"15−8",val:7},{expr:"4²",val:16},{expr:"2×11",val:22}], dir:"desc" },
+  { label:"მეტი სირთულე — ზრდადობით", items:[{expr:"3²",val:9},{expr:"4×3",val:12},{expr:"25÷5",val:5},{expr:"6+9",val:15},{expr:"2×4",val:8}], dir:"asc" },
+  { label:"ფინალი — კლებადობით", items:[{expr:"7×3",val:21},{expr:"4²",val:16},{expr:"30÷2",val:15},{expr:"5×5",val:25},{expr:"3×8",val:24}], dir:"desc" },
+];
+
+let current = 0, score = 0, slots = [], dragSrc = null;
+
+function shuffle(a){ for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a; }
+
+function render(){
+  const ga = document.getElementById('game-area');
+  if(current >= rounds.length){ ga.innerHTML = renderFinish(); return; }
+  const r = rounds[current];
+  document.getElementById('prog').style.width = (current / rounds.length * 100) + '%';
+  document.getElementById('round-info').textContent = `რაუნდი ${current+1} / ${rounds.length} — ${r.label}`;
+  slots = Array(r.items.length).fill(null);
+  const pool = shuffle([...r.items]);
+  ga.innerHTML = `
+    <div class="instruction">
+      <strong>ჩააგდე ბარათები სლოტებში</strong> — ${r.dir==='asc'?'პატარიდან დიდისკენ':'დიდიდან პატარისკენ'}:
+      <span style="margin-left:8px;font-size:13px;">${r.dir==='asc'?'1-ლი = ყველაზე პატარა':'1-ლი = ყველაზე დიდი'}</span>
+    </div>
+    <div class="target-row" id="slots-row">
+      ${r.items.map((_,i)=>`<div class="slot" id="slot-${i}" data-idx="${i}"><span class="slot-label">${i+1}${i===0?'-ლი':'-ე'}</span></div>`).join('')}
+    </div>
+    <div class="cards-row" id="cards-pool">
+      ${pool.map(it=>`<div class="card" draggable="true" id="card-${it.expr.replace(/[^a-zA-Z0-9]/g,'_')}" data-expr="${it.expr}" data-val="${it.val}">${it.expr}</div>`).join('')}
+    </div>
+    <div id="feedback" class="feedback"></div>
+    <div class="actions">
+      <button class="primary" onclick="checkAnswer()">შემოწმება ✓</button>
+      <button onclick="resetRound()">თავიდან</button>
+    </div>`;
+  bindDrag();
+}
+
+function renderFinish(){
+  const pct = Math.round(score / rounds.length * 100);
+  const msg = pct===100 ? 'შესანიშნავი შედეგი!' : pct>=60 ? 'კარგი მუშაობა!' : 'გაიმეორე — გამოვა!';
+  return `<div class="finish-box">
+    <div class="big">${score}/${rounds.length}</div>
+    <div class="sub">${msg}</div>
+    <button class="primary" onclick="restart()">თავიდან თამაში</button>
+  </div>`;
+}
+
+function bindDrag(){
+  document.querySelectorAll('.card').forEach(c=>{
+    c.addEventListener('dragstart', e=>{ dragSrc=c; c.classList.add('dragging'); });
+    c.addEventListener('dragend', e=>{ c.classList.remove('dragging'); });
+  });
+  document.querySelectorAll('.slot').forEach(s=>{
+    s.addEventListener('dragover', e=>{ e.preventDefault(); s.classList.add('over'); });
+    s.addEventListener('dragleave', e=>{ s.classList.remove('over'); });
+    s.addEventListener('drop', e=>{
+      e.preventDefault(); s.classList.remove('over');
+      if(!dragSrc) return;
+      const idx = parseInt(s.dataset.idx);
+      const existing = s.querySelector('.card');
+      if(existing){ document.getElementById('cards-pool').appendChild(existing); }
+      const displaced = slots.findIndex(x=>x&&x.id===dragSrc.id);
+      if(displaced>=0){ slots[displaced]=null; document.getElementById(`slot-${displaced}`).classList.remove('filled'); }
+      slots[idx] = dragSrc;
+      s.classList.add('filled');
+      s.appendChild(dragSrc);
+      hideFeedback();
+    });
+  });
+  const pool = document.getElementById('cards-pool');
+  pool.addEventListener('dragover', e=>e.preventDefault());
+  pool.addEventListener('drop', e=>{
+    e.preventDefault();
+    if(!dragSrc) return;
+    const idx = slots.findIndex(x=>x&&x.id===dragSrc.id);
+    if(idx>=0){ slots[idx]=null; document.getElementById(`slot-${idx}`).classList.remove('filled'); }
+    pool.appendChild(dragSrc);
+    hideFeedback();
+  });
+}
+
+function hideFeedback(){ const f=document.getElementById('feedback'); if(f){f.className='feedback';f.textContent='';} }
+
+function checkAnswer(){
+  const r = rounds[current];
+  const filled = slots.filter(Boolean);
+  if(filled.length < r.items.length){ showFeedback('err','გთხოვთ ყველა ბარათი განათავსოთ სლოტებში!'); return; }
+  const vals = slots.map(c=>parseInt(c.dataset.val));
+  const sorted = r.dir==='asc' ? [...vals].sort((a,b)=>a-b) : [...vals].sort((a,b)=>b-a);
+  const ok = vals.every((v,i)=>v===sorted[i]);
+  slots.forEach((c,i)=>{
+    if(!c) return;
+    c.classList.remove('correct','wrong');
+    c.classList.add(sorted[i]===parseInt(c.dataset.val)?'correct':'wrong');
+  });
+  if(ok){
+    score++;
+    document.getElementById('score-display').textContent = score;
+    showFeedback('ok','სწორია! გამარჯობა!');
+    setTimeout(()=>{ current++; render(); }, 1200);
+  } else {
+    showFeedback('err','ცდა არ გამოვიდა — სცადე თავიდან!');
+  }
+}
+
+function showFeedback(type, msg){ const f=document.getElementById('feedback'); f.className='feedback '+type; f.textContent=msg; }
+function resetRound(){ render(); }
+function restart(){ current=0; score=0; document.getElementById('score-display').textContent=0; render(); }
+
+render();
+</script>
+</body>
+</html>

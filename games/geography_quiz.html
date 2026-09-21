@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Geography Quiz — საქართველო</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0e1420;
+  --card:#161e2e;
+  --border:rgba(255,255,255,0.08);
+  --accent:#4da6ff;
+  --green:#3ddc84;
+  --red:#ff5c5c;
+  --yellow:#ffe600;
+  --text:#f0f4ff;
+  --muted:#5a7090;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Noto Sans Georgian',system-ui,sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-start;padding:1.5rem 1rem 2rem;
+}
+#wrap{width:100%;max-width:600px;display:flex;flex-direction:column;gap:14px;}
+
+/* Progress */
+#progress-row{display:flex;align-items:center;gap:10px;}
+#progress-bar{flex:1;height:4px;background:rgba(255,255,255,0.08);border-radius:2px;overflow:hidden;}
+#progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.4s;}
+#prog-lbl{font-size:11px;color:var(--muted);letter-spacing:1px;white-space:nowrap;}
+
+/* Score row */
+#score-row{display:flex;justify-content:space-between;align-items:center;}
+.badge{
+  padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:1px;
+  background:rgba(255,255,255,0.05);border:0.5px solid var(--border);color:var(--muted);
+}
+.badge span{color:var(--text);}
+
+/* Timer */
+#timer-wrap{position:relative;width:48px;height:48px;flex-shrink:0;}
+#timer-wrap svg{position:absolute;top:0;left:0;transform:rotate(-90deg);}
+circle{fill:none;stroke-width:3.5;stroke-linecap:round;}
+#tc-bg{stroke:rgba(255,255,255,0.07);}
+#tc-fill{stroke:var(--accent);stroke-dasharray:120;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke 0.5s;}
+#timer-num{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;}
+
+/* Category badge */
+#cat-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:5px 14px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:1px;
+  background:rgba(77,166,255,0.1);border:0.5px solid rgba(77,166,255,0.3);
+  color:var(--accent);align-self:flex-start;
+}
+
+/* Question card */
+#q-card{
+  background:var(--card);border:0.5px solid var(--border);
+  border-radius:14px;padding:1.5rem;
+  display:flex;align-items:flex-start;gap:14px;
+}
+#q-num{
+  font-size:11px;letter-spacing:2px;color:var(--muted);
+  white-space:nowrap;padding-top:2px;
+}
+#q-text{font-size:17px;font-weight:600;line-height:1.55;}
+
+/* Options */
+#options{display:flex;flex-direction:column;gap:9px;}
+.opt{
+  padding:13px 16px;
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(255,255,255,0.09);
+  border-radius:10px;
+  font-size:15px;font-weight:600;
+  cursor:pointer;text-align:left;color:var(--text);
+  transition:background 0.15s,border-color 0.15s,transform 0.1s;
+  display:flex;align-items:center;gap:10px;
+}
+.opt:hover:not(.locked){background:rgba(77,166,255,0.09);border-color:rgba(77,166,255,0.35);}
+.opt:active:not(.locked){transform:scale(0.98);}
+.opt.correct{background:rgba(61,220,132,0.12);border-color:rgba(61,220,132,0.6);color:var(--green);}
+.opt.wrong{background:rgba(255,92,92,0.1);border-color:rgba(255,92,92,0.5);color:var(--red);}
+.opt.reveal{background:rgba(61,220,132,0.07);border-color:rgba(61,220,132,0.3);color:rgba(61,220,132,0.7);}
+.opt-letter{
+  width:24px;height:24px;border-radius:6px;flex-shrink:0;
+  background:rgba(255,255,255,0.06);border:0.5px solid rgba(255,255,255,0.1);
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;letter-spacing:1px;color:var(--muted);
+}
+.opt.correct .opt-letter{background:rgba(61,220,132,0.2);border-color:var(--green);color:var(--green);}
+.opt.wrong .opt-letter{background:rgba(255,92,92,0.2);border-color:var(--red);color:var(--red);}
+.opt.reveal .opt-letter{background:rgba(61,220,132,0.15);border-color:rgba(61,220,132,0.4);color:rgba(61,220,132,0.8);}
+
+/* Feedback */
+#feedback{
+  min-height:46px;padding:10px 16px;border-radius:10px;
+  font-size:13px;font-weight:600;line-height:1.5;display:none;
+}
+#feedback.ok{background:rgba(61,220,132,0.08);border:0.5px solid rgba(61,220,132,0.25);color:var(--green);display:block;}
+#feedback.err{background:rgba(255,92,92,0.08);border:0.5px solid rgba(255,92,92,0.25);color:var(--red);display:block;}
+
+/* Next button */
+#next-btn{
+  padding:13px;border-radius:10px;
+  background:rgba(77,166,255,0.12);border:1px solid rgba(77,166,255,0.35);
+  color:var(--accent);font-size:14px;font-weight:700;letter-spacing:1px;
+  cursor:pointer;text-align:center;display:none;transition:background 0.15s;
+  font-family:'Noto Sans Georgian',sans-serif;
+}
+#next-btn:hover{background:rgba(77,166,255,0.2);}
+
+/* Category select */
+#cat-screen{display:flex;flex-direction:column;gap:14px;}
+#cat-screen h2{font-size:22px;font-weight:900;color:var(--text);}
+#cat-screen p{font-size:13px;color:var(--muted);line-height:1.7;}
+.cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.cat-btn{
+  padding:18px 14px;border-radius:12px;
+  background:var(--card);border:0.5px solid var(--border);
+  cursor:pointer;text-align:center;transition:border-color 0.15s,background 0.15s;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+}
+.cat-btn:hover{border-color:rgba(77,166,255,0.4);background:rgba(77,166,255,0.06);}
+.cat-btn .icon{font-size:28px;line-height:1;}
+.cat-btn .name{font-size:13px;font-weight:700;color:var(--text);}
+.cat-btn .desc{font-size:11px;color:var(--muted);line-height:1.4;}
+.start-btn{
+  padding:13px;border-radius:10px;
+  background:rgba(77,166,255,0.12);border:1px solid rgba(77,166,255,0.35);
+  color:var(--accent);font-size:15px;font-weight:700;letter-spacing:1px;
+  cursor:pointer;transition:background 0.15s;
+  font-family:'Noto Sans Georgian',sans-serif;
+}
+.start-btn:hover{background:rgba(77,166,255,0.22);}
+
+/* Results */
+#result-screen{display:none;flex-direction:column;gap:16px;align-items:center;text-align:center;}
+#result-screen h2{font-size:26px;font-weight:900;}
+.result-circle{
+  width:120px;height:120px;border-radius:50%;
+  background:rgba(77,166,255,0.08);border:2px solid rgba(77,166,255,0.3);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+}
+.result-circle .big{font-size:36px;font-weight:900;color:var(--accent);}
+.result-circle .sub{font-size:12px;color:var(--muted);}
+.result-stars{font-size:28px;letter-spacing:4px;}
+.result-msg{font-size:14px;color:var(--muted);line-height:1.7;}
+.result-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%;
+}
+.res-box{
+  background:var(--card);border:0.5px solid var(--border);border-radius:10px;
+  padding:12px 8px;text-align:center;
+}
+.res-box .rl{font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;}
+.res-box .rv{font-size:20px;font-weight:700;}
+</style>
+</head>
+<body>
+<div id="wrap">
+
+  <!-- Category screen -->
+  <div id="cat-screen">
+    <h2>🗺️ Geography Quiz</h2>
+    <p>აირჩიე კატეგორია და შეამოწმე ცოდნა!</p>
+    <div class="cat-grid" id="cat-grid"></div>
+    <button class="start-btn" id="start-btn" onclick="startQuiz()" style="display:none">▶ დაწყება</button>
+  </div>
+
+  <!-- Quiz screen -->
+  <div id="quiz-screen" style="display:none;flex-direction:column;gap:14px;">
+    <div id="score-row">
+      <div class="badge">ქულა: <span id="score-el">0</span></div>
+      <div id="timer-wrap">
+        <svg width="48" height="48" viewBox="0 0 48 48">
+          <circle id="tc-bg" cx="24" cy="24" r="19"/>
+          <circle id="tc-fill" cx="24" cy="24" r="19"/>
+        </svg>
+        <div id="timer-num">15</div>
+      </div>
+      <div class="badge">სწორი: <span id="correct-el">0</span>/<span id="total-el">0</span></div>
+    </div>
+
+    <div id="progress-row">
+      <div id="progress-bar"><div id="progress-fill" style="width:0%"></div></div>
+      <div id="prog-lbl">1 / 20</div>
+    </div>
+
+    <div id="cat-badge"></div>
+
+    <div id="q-card">
+      <div id="q-num">კ.01</div>
+      <div id="q-text">კითხვა...</div>
+    </div>
+
+    <div id="options"></div>
+    <div id="feedback"></div>
+    <button id="next-btn" onclick="nextQuestion()">შემდეგი →</button>
+  </div>
+
+  <!-- Results -->
+  <div id="result-screen">
+    <h2 id="res-title">შედეგი</h2>
+    <div class="result-circle">
+      <div class="big" id="res-pct">0%</div>
+      <div class="sub" id="res-frac">0/0</div>
+    </div>
+    <div class="result-stars" id="res-stars">⭐⭐⭐</div>
+    <div class="result-msg" id="res-msg"></div>
+    <div class="result-grid">
+      <div class="res-box"><div class="rl">ქულა</div><div class="rv" style="color:var(--accent)" id="r-score">0</div></div>
+      <div class="res-box"><div class="rl">სწრაფი</div><div class="rv" style="color:var(--yellow)" id="r-fast">0</div></div>
+      <div class="res-box"><div class="rl">სერია</div><div class="rv" style="color:var(--green)" id="r-streak">0</div></div>
+    </div>
+    <button class="start-btn" onclick="resetToMenu()">↺ თავიდან</button>
+  </div>
+
+</div>
+
+<script>
+// ── Audio ────────────────────────────────────────────────────
+let ac=null;
+function getAC(){if(!ac)ac=new(window.AudioContext||window.webkitAudioContext)();return ac;}
+function tone(f,t='sine',d=0.1,v=0.15){
+  try{const a=getAC(),o=a.createOscillator(),g=a.createGain();
+  o.connect(g);g.connect(a.destination);o.type=t;
+  o.frequency.setValueAtTime(f,a.currentTime);
+  g.gain.setValueAtTime(v,a.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,a.currentTime+d);
+  o.start();o.stop(a.currentTime+d+0.01);}catch(e){}
+}
+const SFX={
+  correct(){ tone(523,'sine',0.08,0.15); setTimeout(()=>tone(659,'sine',0.1,0.12),80); },
+  wrong(){   tone(220,'sawtooth',0.15,0.16); },
+  tick(){    tone(800,'square',0.03,0.06); },
+  timeout(){ tone(160,'sawtooth',0.2,0.18); },
+  start(){   [330,440,550].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.1,0.12),i*60)); },
+  win(){     [523,659,784,1047].forEach((f,i)=>setTimeout(()=>tone(f,'sine',0.18,0.14),i*100)); },
+};
+
+// ── Question Bank ────────────────────────────────────────────
+const CATEGORIES = [
+  {
+    id:'cities', icon:'🏙️', name:'საქართელოს ქალაქები',
+    desc:'დედაქალაქი, ქალაქები,\nისტორიული ადგილები',
+    color:'rgba(77,166,255,0.3)',
+    qs:[
+      {q:'საქართველოს დედაქალაქი?', a:'თბილისი', opts:['თბილისი','ქუთაისი','ბათუმი','გორი']},
+      {q:'კოლხეთის სამეფოს ისტორიული ცენტრი?', a:'ქუთაისი', opts:['ქუთაისი','ფოთი','ზუგდიდი','სენაკი']},
+      {q:'აჭარის ავტონომიური რესპუბლიკის ცენტრი?', a:'ბათუმი', opts:['ბათუმი','ოზურგეთი','ლანჩხუთი','ქობულეთი']},
+      {q:'სამცხე-ჯავახეთის ადმინისტრაციული ცენტრი?', a:'ახალციხე', opts:['ახალციხე','ახალქალაქი','ასპინძა','ნინოწმინდა']},
+      {q:'კახეთის ადმინისტრაციული ცენტრი?', a:'თელავი', opts:['თელავი','სიღნაღი','გურჯაანი','ახმეტა']},
+      {q:'მცხეთა-მთიანეთის ადმინისტრაციული ცენტრი?', a:'მცხეთა', opts:['მცხეთა','ჟინვალი','ყაზბეგი','ახალგორი']},
+      {q:'შიდა ქართლის ადმინისტრაციული ცენტრი?', a:'გორი', opts:['გორი','კასპი','ხაშური','სურამი']},
+      {q:'სამეგრელო-ზემო სვანეთის ცენტრი?', a:'ზუგდიდი', opts:['ზუგდიდი','ფოთი','სენაკი','მესტია']},
+      {q:'იმერეთის ცენტრი?', a:'ქუთაისი', opts:['ქუთაისი','ზესტაფონი','საჩხერე','ვარციხე']},
+      {q:'ქვემო ქართლის ადმინისტრაციული ცენტრი?', a:'რუსთავი', opts:['რუსთავი','მარნეული','გარდაბანი','ბოლნისი']},
+      {q:'სვანეთის ისტორიული ცენტრი?', a:'მესტია', opts:['მესტია','ლენტეხი','ცაგერი','ამბროლაური']},
+      {q:'საქართველოს მეორე დიდი ქალაქი მოსახლეობით?', a:'ქუთაისი', opts:['ქუთაისი','ბათუმი','რუსთავი','გორი']},
+      {q:'სოხუმი — ისტორიულად რომელი მხარის ცენტრია?', a:'აფხაზეთი', opts:['აფხაზეთი','სამეგრელო','გურია','იმერეთი']},
+      {q:'ცხინვალი — ისტორიულად რომელი მხარის ცენტრია?', a:'სამხრეთ ოსეთი', opts:['სამხრეთ ოსეთი','შიდა ქართლი','ქვემო ქართლი','მცხეთა-მთიანეთი']},
+      {q:'ფოთი — რომელ ზღვაზე მდებარე ქალაქია?', a:'შავი ზღვა', opts:['შავი ზღვა','კასპიის ზღვა','ეგეოსის ზღვა','ხმელთაშუა ზღვა']},
+      {q:'ბორჯომი — სად მდებარეობს?', a:'სამცხე-ჯავახეთი', opts:['სამცხე-ჯავახეთი','იმერეთი','შიდა ქართლი','კახეთი']},
+      {q:'ანანური — ისტორიული ციხე-სიმაგრე, სად მდებარეობს?', a:'მცხეთა-მთიანეთი', opts:['მცხეთა-მთიანეთი','კახეთი','შიდა ქართლი','სამეგრელო']},
+      {q:'გელათის მონასტერი — სად მდებარეობს?', a:'ქუთაისის მახლობლად', opts:['ქუთაისის მახლობლად','მცხეთასთან','ახალციხეში','თბილისში']},
+      {q:'ვარძია — რომელ მხარეშია?', a:'სამცხე-ჯავახეთი', opts:['სამცხე-ჯავახეთი','კახეთი','შიდა ქართლი','ქვემო ქართლი']},
+      {q:'უძველესი ქართული დედაქალაქი?', a:'მცხეთა', opts:['მცხეთა','ქუთაისი','გორი','სიღნაღი']},
+    ]
+  },
+  {
+    id:'geo', icon:'⛰️', name:'რელიეფი და ბუნება',
+    desc:'მთები, მდინარეები,\nტბები, ბუნება',
+    color:'rgba(61,220,132,0.3)',
+    qs:[
+      {q:'საქართველოს უმაღლესი მთა?', a:'შხარა', opts:['შხარა','ყაზბეგი','ელბრუსი','ადიში']},
+      {q:'თბილისის მდინარე?', a:'მტკვარი', opts:['მტკვარი','რიონი','არაგვი','ალაზანი']},
+      {q:'კახეთის მთავარი მდინარე?', a:'ალაზანი', opts:['ალაზანი','მტკვარი','ენგური','ხრამი']},
+      {q:'საქართველოს უდიდესი ტბა?', a:'პალიასტომი', opts:['პალიასტომი','ტაბასყური','პარავანი','ბაზალეთი']},
+      {q:'რიონი — სად ედინება ზღვაში?', a:'ფოთთან', opts:['ფოთთან','ბათუმთან','სოხუმთან','ქობულეთთან']},
+      {q:'სვანეთი — კავკასიონის რომელ ნაწილშია?', a:'ცენტრალური კავკასიონი', opts:['ცენტრალური კავკასიონი','დასავლეთი','აღმოსავლეთი','სამხრეთი']},
+      {q:'ყაზბეგი — რომელ რეგიონშია?', a:'მცხეთა-მთიანეთი', opts:['მცხეთა-მთიანეთი','სამეგრელო','კახეთი','გურია']},
+      {q:'ქართლის ვაკე — სად მდებარეობს?', a:'მტკვრის ხეობაში', opts:['მტკვრის ხეობაში','რიონის ხეობაში','ალაზნის ხეობაში','ენგურის ხეობაში']},
+      {q:'ბაკურიანი — ზამთრის კურორტი, რომელ მხარეშია?', a:'სამცხე-ჯავახეთი', opts:['სამცხე-ჯავახეთი','შიდა ქართლი','კახეთი','მცხეთა-მთიანეთი']},
+      {q:'კოლხეთის დაბლობი — სად მდებარეობს?', a:'დასავლეთ საქართველო', opts:['დასავლეთ საქართველო','აღმოსავლეთ საქართველო','სამხრეთ საქართველო','ჩრდილოეთ საქართველო']},
+      {q:'ამბროლაური — რომელი მხარის ცენტრია?', a:'რაჭა-ლეჩხუმი', opts:['რაჭა-ლეჩხუმი','იმერეთი','სამეგრელო','მცხეთა-მთიანეთი']},
+      {q:'ენგური — საქართველოს რომელ ნაწილში მიედინება?', a:'დასავლეთ საქართველო', opts:['დასავლეთ საქართველო','აღმოსავლეთ საქართველო','სამხრეთ-აღმოსავლეთი','ცენტრი']},
+      {q:'საქართველო — რა ოკეანის აუზს მიეკუთვნება?', a:'ატლანტის ოკეანე', opts:['ატლანტის ოკეანე','წყნარი ოკეანე','ინდოეთის ოკეანე','ჩრდილოეთ ყინულოვანი']},
+      {q:'ლიახვი — სად ჩაედინება?', a:'მტკვარი', opts:['მტკვარი','რიონი','ალაზანი','ხრამი']},
+      {q:'სამი ზღვა ესაზღვრება საქართველოს — სწორია?', a:'არა, მხოლოდ შავი ზღვა', opts:['არა, მხოლოდ შავი ზღვა','კი, შავი კასპი და ეგეოსი','კი, შავი და კასპი','კი, სამივე']},
+      {q:'ჯვარის ჰიდროელექტროსადგური — რომელ მდინარეზეა?', a:'ენგური', opts:['ენგური','მტკვარი','ხრამი','რიონი']},
+      {q:'საქართველოს სასაზღვრო ჩრდილოეთი მეზობელი?', a:'რუსეთი', opts:['რუსეთი','სომხეთი','თურქეთი','აზერბაიჯანი']},
+      {q:'სამხრეთ-დასავლეთ მეზობელი ქვეყანა?', a:'თურქეთი', opts:['თურქეთი','სომხეთი','ირანი','აზერბაიჯანი']},
+      {q:'კავკასიონი — ევროპასა და აზიას შორის?', a:'კი', opts:['კი','არა, მხოლოდ აზიაშია','არა, მხოლოდ ევროპაშია','სხვა პასუხი']},
+      {q:'საქართველოს ფართობი (დაახლოებით)?', a:'70 000 კმ²', opts:['70 000 კმ²','120 000 კმ²','35 000 კმ²','200 000 კმ²']},
+    ]
+  },
+  {
+    id:'world', icon:'🌍', name:'მსოფლიო',
+    desc:'დედაქალაქები, ქვეყნები,\nკონტინენტები',
+    color:'rgba(255,230,0,0.3)',
+    qs:[
+      {q:'საფრანგეთის დედაქალაქი?', a:'პარიზი', opts:['პარიზი','ბრიუსელი','ლიონი','ნიცა']},
+      {q:'გერმანიის დედაქალაქი?', a:'ბერლინი', opts:['ბერლინი','მიუნხენი','ჰამბურგი','ფრანკფურტი']},
+      {q:'იაპონიის დედაქალაქი?', a:'ტოკიო', opts:['ტოკიო','ოსაკა','კიოტო','ჰირო']},
+      {q:'ბრაზილიის დედაქალაქი?', a:'ბრაზილია', opts:['ბრაზილია','რიო-დე-ჟანეირო','სან-პაულო','საულვადორი']},
+      {q:'ავსტრალიის დედაქალაქი?', a:'კანბერა', opts:['კანბერა','სიდნეй','მელბურნი','ბრիზბენი']},
+      {q:'კანადის დედაქალაქია', a:'ოტავა', opts:['ოტავა','ტორონტო','ვანკუვერი','მონრეალი']},
+      {q:'ყველაზე დიდი კონტინენტი?', a:'აზია', opts:['აზია','ამერიკა','აფრიკა','ანტარქტიდა']},
+      {q:'ყველაზე გრძელი მდინარე მსოფლიოში?', a:'ნილოსი', opts:['ნილოსი','ამაზონი','იანძი','მისისიპი']},
+      {q:'ევროპის ყველაზე მაღალი მთა?', a:'ელბრუსი', opts:['ელბრუსი','მონ-ბლანი','მონტე-როზა','მატერჰორნი']},
+      {q:'ჩინეთის დედაქალაქი?', a:'პეკინი', opts:['პეკინი','შანხაი','ჰონგ-კონგი','შენჯენი']},
+      {q:'სომხეთის დედაქალაქი?', a:'ერევანი', opts:['ერევანი','გიუმრი','ვანაძორი','ქაჯარანი']},
+      {q:'თურქეთის დედაქალაქი?', a:'ანკარა', opts:['ანკარა','სტამბული','იზმირი','ბურსა']},
+      {q:'ყველაზე ღრმა ტბა მსოფლიოში?', a:'ბაიკალი', opts:['ბაიკალი','კასპია','ვიქტორია','ტიტიკაკა']},
+      {q:'ამაზონის მდინარე — რომელ კონტინენტზე?', a:'სამხრეთ ამერიკა', opts:['სამხრეთ ამერიკა','ჩრდილოეთ ამერიკა','აფრიკა','აზია']},
+      {q:'მსოფლიოს ყველაზე მცირე ქვეყანა?', a:'ვატიკანი', opts:['ვატიკანი','მონაკო','სან-მარინო','ლიხტენშტეინი']},
+      {q:'ეგვიპტე — რომელ კონტინენტზე?', a:'აფრიკა', opts:['აფრიკა','აზია','ევრაზია','ახლო აღმოსავლეთი']},
+      {q:'მედიტერანე ზღვა — სხვა სახელი?', a:'ხმელთაშუა ზღვა', opts:['ხმელთაშუა ზღვა','კასპიის ზღვა','შავი ზღვა','წითელი ზღვა']},
+      {q:'ნორვეგიის დედაქალაქი?', a:'ოსლო', opts:['ოსლო','სტოკჰოლმი','კოპენჰაგენი','ჰელსინკი']},
+      {q:'პაკისტანის დედაქალაქი?', a:'ისლამაბადი', opts:['ისლამაბადი','კარაჩი','ლაჰორი','პეშავარი']},
+      {q:'სამხრეთ ამერიკის ყველაზე დიდი ქვეყანა?', a:'ბრაზილია', opts:['ბრაზილია','არგენტინა','კოლუმბია','პერუ']},
+    ]
+  },
+  {
+    id:'mixed', icon:'🎯', name:'შერეული',
+    desc:'ყველა კატეგორიიდან\nსხვადასხვა კითხვები',
+    color:'rgba(255,92,255,0.3)',
+    qs:[] // filled from all categories
+  }
+];
+
+// Fill mixed
+CATEGORIES[3].qs = shuffle([
+  ...CATEGORIES[0].qs.slice(0,7),
+  ...CATEGORIES[1].qs.slice(0,7),
+  ...CATEGORIES[2].qs.slice(0,6),
+]);
+
+function shuffle(a){return[...a].sort(()=>Math.random()-0.5);}
+
+// ── State ────────────────────────────────────────────────────
+let selectedCats=new Set(), questions=[], qIdx=0, score=0, correct=0;
+let timerVal=15, timerInt=null, locked=false;
+let streak=0, maxStreak=0, fastAnswers=0;
+
+// ── Category screen ──────────────────────────────────────────
+function buildCatScreen(){
+  const grid=document.getElementById('cat-grid');
+  grid.innerHTML='';
+  CATEGORIES.forEach((cat,i)=>{
+    const btn=document.createElement('div');
+    btn.className='cat-btn';
+    btn.dataset.id=cat.id;
+    btn.innerHTML=`<div class="icon">${cat.icon}</div><div class="name">${cat.name}</div><div class="desc">${cat.desc}</div>`;
+    btn.addEventListener('click',()=>toggleCat(cat.id,btn));
+    grid.appendChild(btn);
+  });
+}
+buildCatScreen();
+
+function toggleCat(id,btn){
+  if(selectedCats.has(id)){selectedCats.delete(id);btn.style.borderColor='';btn.style.background='';}
+  else{
+    selectedCats.add(id);
+    const cat=CATEGORIES.find(c=>c.id===id);
+    btn.style.borderColor=cat.color.replace('0.3','0.8');
+    btn.style.background=cat.color.replace('0.3','0.12');
+  }
+  document.getElementById('start-btn').style.display=selectedCats.size>0?'block':'none';
+}
+
+function startQuiz(){
+  SFX.start();
+  const cats=CATEGORIES.filter(c=>selectedCats.has(c.id));
+  let pool=[];
+  cats.forEach(c=>pool.push(...c.qs.map(q=>({...q,cat:c}))));
+  pool=shuffle(pool).slice(0,20);
+  questions=pool;
+  qIdx=0;score=0;correct=0;streak=0;maxStreak=0;fastAnswers=0;
+  document.getElementById('cat-screen').style.display='none';
+  document.getElementById('quiz-screen').style.display='flex';
+  document.getElementById('total-el').textContent=questions.length;
+  showQuestion();
+}
+
+// ── Quiz ─────────────────────────────────────────────────────
+function showQuestion(){
+  if(qIdx>=questions.length){endQuiz();return;}
+  const q=questions[qIdx];
+  locked=false;
+  document.getElementById('feedback').className='feedback';
+  document.getElementById('feedback').textContent='';
+  document.getElementById('next-btn').style.display='none';
+
+  // progress
+  const pct=(qIdx/questions.length)*100;
+  document.getElementById('progress-fill').style.width=pct+'%';
+  document.getElementById('prog-lbl').textContent=`${qIdx+1} / ${questions.length}`;
+  document.getElementById('score-el').textContent=score;
+  document.getElementById('correct-el').textContent=correct;
+
+  // category badge
+  const cb=document.getElementById('cat-badge');
+  cb.textContent=`${q.cat.icon} ${q.cat.name}`;
+  cb.style.background=q.cat.color.replace('0.3','0.1');
+  cb.style.borderColor=q.cat.color.replace('0.3','0.4');
+  cb.style.color=q.cat.color.replace('rgba(','').replace(/,[^,]+\)$/,'').split(',').length>2
+    ?'#fff':'#fff';
+
+  // question
+  document.getElementById('q-num').textContent=`კ.${String(qIdx+1).padStart(2,'0')}`;
+  document.getElementById('q-text').textContent=q.q;
+
+  // options
+  const opts=document.getElementById('options');
+  opts.innerHTML='';
+  const letters=['A','B','C','D'];
+  shuffle(q.opts).forEach((o,i)=>{
+    const btn=document.createElement('button');
+    btn.className='opt';
+    btn.dataset.val=o;
+    btn.innerHTML=`<span class="opt-letter">${letters[i]}</span>${o}`;
+    btn.addEventListener('click',()=>answer(o,q.a,timerVal));
+    opts.appendChild(btn);
+  });
+
+  // timer
+  startTimer(15);
+}
+
+function startTimer(sec){
+  clearInterval(timerInt);
+  timerVal=sec;
+  updateTimerRing(sec,15);
+  timerInt=setInterval(()=>{
+    timerVal--;
+    updateTimerRing(timerVal,15);
+    document.getElementById('timer-num').textContent=timerVal;
+    if(timerVal<=5) SFX.tick();
+    if(timerVal<=0){
+      clearInterval(timerInt);
+      SFX.timeout();
+      streak=0;
+      timeoutQuestion();
+    }
+  },1000);
+}
+
+function updateTimerRing(val,max){
+  const fill=document.getElementById('tc-fill');
+  const num=document.getElementById('timer-num');
+  const circ=120;
+  fill.style.strokeDashoffset=(circ*(1-val/max))+'';
+  const col=val<=5?'#ff5c5c':val<=8?'#ffe600':'#4da6ff';
+  fill.style.stroke=col;
+  num.style.color=col;
+  num.textContent=val;
+}
+
+function answer(chosen,correct_a,timeRemaining){
+  if(locked) return;
+  locked=true;
+  clearInterval(timerInt);
+  const ok=chosen===correct_a;
+  const fast=timeRemaining>=10;
+
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.classList.add('locked');
+    if(btn.dataset.val===correct_a){
+      if(ok) btn.classList.add('correct');
+      else   btn.classList.add('reveal');
+    }
+    if(btn.dataset.val===chosen && !ok) btn.classList.add('wrong');
+  });
+
+  const fb=document.getElementById('feedback');
+  if(ok){
+    SFX.correct();
+    correct++;streak++;
+    if(streak>maxStreak)maxStreak=streak;
+    const pts=100+(fast?50:0)+(streak>1?(streak-1)*20:0);
+    score+=pts;
+    if(fast)fastAnswers++;
+    fb.className='feedback ok';
+    fb.textContent=`✓ სწორია! +${pts}${fast?' ⚡სწრაფი':''}${streak>1?' 🔥 x'+streak+' სერია':''}`;
+  } else {
+    SFX.wrong();
+    streak=0;
+    fb.className='feedback err';
+    fb.textContent=`✗ შეცდომა. სწორი პასუხია: ${correct_a}`;
+  }
+  document.getElementById('score-el').textContent=score;
+  document.getElementById('next-btn').style.display='block';
+}
+
+function timeoutQuestion(){
+  locked=true;
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.classList.add('locked');
+    if(btn.dataset.val===questions[qIdx].a) btn.classList.add('reveal');
+  });
+  const fb=document.getElementById('feedback');
+  fb.className='feedback err';
+  fb.textContent=`⏰ დრო ამოიწურა! სწორია: ${questions[qIdx].a}`;
+  document.getElementById('next-btn').style.display='block';
+}
+
+function nextQuestion(){qIdx++;showQuestion();}
+
+// ── Results ──────────────────────────────────────────────────
+function endQuiz(){
+  clearInterval(timerInt);
+  document.getElementById('quiz-screen').style.display='none';
+  const rs=document.getElementById('result-screen');
+  rs.style.display='flex';
+  const pct=Math.round(correct/questions.length*100);
+  document.getElementById('res-pct').textContent=pct+'%';
+  document.getElementById('res-frac').textContent=`${correct} / ${questions.length}`;
+  document.getElementById('r-score').textContent=score;
+  document.getElementById('r-fast').textContent=fastAnswers;
+  document.getElementById('r-streak').textContent=maxStreak;
+  const stars=pct>=90?'⭐⭐⭐':pct>=60?'⭐⭐':pct>=30?'⭐':'';
+  document.getElementById('res-stars').textContent=stars;
+  const msgs=['კიდევ სცადე!','გაიმეორე!','საშუალოდ!','კარგია!','შესანიშნავი!'];
+  const mi=Math.floor(pct/25);
+  document.getElementById('res-msg').textContent=msgs[Math.min(mi,4)];
+  document.getElementById('res-title').textContent=pct>=80?'🎉 შესანიშნავი!':pct>=50?'👍 კარგი შედეგი':'📚 გაიმეორე';
+  if(pct>=80)SFX.win();
+}
+
+function resetToMenu(){
+  selectedCats.clear();
+  document.querySelectorAll('.cat-btn').forEach(b=>{b.style.borderColor='';b.style.background='';});
+  document.getElementById('start-btn').style.display='none';
+  document.getElementById('result-screen').style.display='none';
+  document.getElementById('cat-screen').style.display='flex';
+}
+</script>
+</body>
+</html>

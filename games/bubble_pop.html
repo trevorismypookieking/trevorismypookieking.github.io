@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bubble Pop — მათემატიკა</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Noto+Sans+Georgian:wght@600;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a1628;
+  --surface:rgba(255,255,255,0.04);
+  --border:rgba(255,255,255,0.08);
+  --text:#f0f4ff;
+  --muted:#4a6080;
+  --accent:#60c8ff;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Nunito',sans-serif;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  overflow:hidden;
+}
+
+/* bg bubbles decoration */
+.bg-bubble{
+  position:fixed;
+  border-radius:50%;
+  opacity:0.04;
+  pointer-events:none;
+  animation:bgFloat linear infinite;
+}
+@keyframes bgFloat{from{transform:translateY(110vh);}to{transform:translateY(-20vh);}}
+
+/* HUD */
+#hud{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  width:100%;
+  max-width:640px;
+  padding:0.9rem 1rem 0.5rem;
+  position:relative;
+  z-index:10;
+}
+.hud-pill{
+  background:rgba(255,255,255,0.06);
+  border:0.5px solid rgba(255,255,255,0.1);
+  border-radius:20px;
+  padding:6px 16px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.hud-pill .lbl{font-size:10px;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;}
+.hud-pill .val{font-size:18px;font-weight:900;color:var(--text);}
+#timer-ring{
+  width:54px;height:54px;
+  position:relative;
+  display:flex;align-items:center;justify-content:center;
+}
+#timer-ring svg{position:absolute;top:0;left:0;transform:rotate(-90deg);}
+#timer-ring circle{fill:none;stroke-width:4;stroke-linecap:round;}
+#timer-bg{stroke:rgba(255,255,255,0.08);}
+#timer-fill{stroke:#60c8ff;stroke-dasharray:132;stroke-dashoffset:0;transition:stroke-dashoffset 1s linear,stroke 0.5s;}
+#timer-num{font-size:16px;font-weight:900;color:var(--text);position:relative;z-index:1;}
+
+/* Arena */
+#arena{
+  position:relative;
+  width:100%;
+  max-width:640px;
+  flex:1;
+  overflow:hidden;
+}
+
+/* Bubbles */
+.bubble{
+  position:absolute;
+  border-radius:50%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:transform 0.1s;
+  user-select:none;
+}
+.bubble:hover{transform:scale(1.08) translateY(var(--ty,0px));}
+.bubble .expr{
+  font-family:'Noto Sans Georgian','Nunito',sans-serif;
+  font-weight:700;
+  text-align:center;
+  line-height:1.2;
+  pointer-events:none;
+}
+.bubble .eq{
+  font-size:11px;
+  opacity:0.7;
+  pointer-events:none;
+  margin-top:2px;
+  font-family:'Nunito',sans-serif;
+}
+.bubble::after{
+  content:'';
+  position:absolute;
+  top:14%;left:22%;
+  width:28%;height:18%;
+  background:rgba(255,255,255,0.35);
+  border-radius:50%;
+  transform:rotate(-30deg);
+  pointer-events:none;
+}
+/* pop animation */
+@keyframes popOut{
+  0%{transform:scale(1);opacity:1;}
+  40%{transform:scale(1.5);opacity:0.7;}
+  100%{transform:scale(2.5);opacity:0;}
+}
+@keyframes wrongShake{
+  0%,100%{transform:translateX(0);}
+  20%{transform:translateX(-8px);}
+  60%{transform:translateX(8px);}
+}
+.bubble.popping{animation:popOut 0.35s forwards;pointer-events:none;}
+.bubble.wrong-anim{animation:wrongShake 0.3s;}
+
+/* Particle canvas */
+#particle-canvas{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:5;
+}
+
+/* Bottom input */
+#bottom{
+  width:100%;
+  max-width:640px;
+  padding:0.75rem 1rem 1.25rem;
+  position:relative;
+  z-index:10;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:0.6rem;
+}
+#answer-row{display:flex;gap:10px;width:100%;}
+#ans-input{
+  flex:1;
+  background:rgba(255,255,255,0.06);
+  border:1.5px solid rgba(255,255,255,0.12);
+  border-radius:10px;
+  color:#fff;
+  font-family:'Nunito',sans-serif;
+  font-size:24px;
+  font-weight:700;
+  text-align:center;
+  padding:10px;
+  outline:none;
+  letter-spacing:3px;
+  transition:border-color 0.15s,background 0.15s;
+}
+#ans-input:focus{border-color:rgba(96,200,255,0.5);}
+#ans-input.ok{border-color:#3ddc84;background:rgba(61,220,132,0.1);color:#3ddc84;}
+#ans-input.err{border-color:#ff5c5c;background:rgba(255,92,92,0.1);color:#ff5c5c;animation:wrongShake 0.3s;}
+#pop-btn{
+  padding:10px 22px;
+  background:rgba(96,200,255,0.15);
+  border:1.5px solid rgba(96,200,255,0.4);
+  border-radius:10px;
+  color:#60c8ff;
+  font-family:'Nunito',sans-serif;
+  font-size:15px;
+  font-weight:900;
+  cursor:pointer;
+  transition:background 0.15s;
+  white-space:nowrap;
+}
+#pop-btn:hover{background:rgba(96,200,255,0.25);}
+#score-flash{
+  font-size:13px;
+  color:rgba(255,255,255,0.3);
+  height:18px;
+  font-weight:700;
+  letter-spacing:1px;
+  transition:opacity 0.3s;
+}
+
+/* Overlays */
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(5,12,28,0.93);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:50;
+  gap:1.25rem;
+  padding:2rem;
+}
+.overlay h2{
+  font-size:32px;font-weight:900;
+  color:#60c8ff;
+  text-shadow:0 0 24px rgba(96,200,255,0.5);
+  letter-spacing:2px;
+}
+.overlay .ka{font-family:'Noto Sans Georgian',sans-serif;}
+.overlay p{font-size:14px;color:var(--muted);text-align:center;line-height:1.8;font-family:'Noto Sans Georgian',sans-serif;}
+.overlay button{
+  padding:13px 38px;
+  background:transparent;
+  border:1.5px solid #60c8ff;
+  border-radius:30px;
+  color:#60c8ff;
+  font-family:'Nunito',sans-serif;
+  font-size:15px;
+  font-weight:900;
+  cursor:pointer;
+  letter-spacing:2px;
+  transition:background 0.15s,box-shadow 0.15s;
+}
+.overlay button:hover{background:rgba(96,200,255,0.12);box-shadow:0 0 24px rgba(96,200,255,0.25);}
+.res-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  width:100%;
+  max-width:300px;
+}
+.res-box{
+  background:rgba(255,255,255,0.05);
+  border:0.5px solid rgba(255,255,255,0.08);
+  border-radius:10px;
+  padding:14px;
+  text-align:center;
+}
+.res-box .rl{font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;}
+.res-box .rv{font-size:26px;font-weight:900;}
+.mode-btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.mode-btn{
+  padding:10px 22px;
+  background:rgba(255,255,255,0.05);
+  border:0.5px solid rgba(255,255,255,0.12);
+  border-radius:20px;
+  color:var(--text);
+  font-family:'Noto Sans Georgian',sans-serif;
+  font-size:13px;
+  font-weight:600;
+  cursor:pointer;
+  transition:background 0.15s,border-color 0.15s;
+}
+.mode-btn:hover,.mode-btn.active{background:rgba(96,200,255,0.12);border-color:rgba(96,200,255,0.4);color:#60c8ff;}
+</style>
+</head>
+<body>
+
+<!-- bg decoration -->
+<script>
+for(let i=0;i<8;i++){
+  const d=document.createElement('div');
+  d.className='bg-bubble';
+  const s=60+Math.random()*120;
+  d.style.cssText=`width:${s}px;height:${s}px;left:${Math.random()*100}%;bottom:-${s}px;
+    background:hsl(${200+Math.random()*60},70%,60%);
+    animation-duration:${12+Math.random()*18}s;
+    animation-delay:-${Math.random()*20}s;`;
+  document.body.appendChild(d);
+}
+</script>
+
+<div id="hud">
+  <div class="hud-pill"><span class="lbl">ქულა</span><span class="val" id="score-v">0</span></div>
+  <div id="timer-ring">
+    <svg width="54" height="54" viewBox="0 0 54 54">
+      <circle class="" id="timer-bg" cx="27" cy="27" r="21"/>
+      <circle class="" id="timer-fill" cx="27" cy="27" r="21"/>
+    </svg>
+    <span id="timer-num">60</span>
+  </div>
+  <div class="hud-pill"><span class="lbl">კომბო</span><span class="val" id="combo-v">x1</span></div>
+</div>
+
+<div id="arena">
+  <canvas id="particle-canvas"></canvas>
+</div>
+
+<div id="bottom">
+  <div id="answer-row">
+    <input id="ans-input" type="number" placeholder="?" autocomplete="off" inputmode="numeric" disabled/>
+    <button id="pop-btn" disabled onclick="tryPop()">💥 POP</button>
+  </div>
+  <div id="score-flash"></div>
+</div>
+
+<!-- Start overlay -->
+<div class="overlay" id="ov-start">
+  <h2>BUBBLE POP</h2>
+  <p>ბუშტებში გამოსახულებებია<br>პასუხი ჩაწერე და POP!</p>
+  <div class="mode-btns">
+    <div class="mode-btn active" id="m-easy" onclick="selectMode('easy')">მარტივი<br><small style="font-size:10px;opacity:0.6;">+ − </small></div>
+    <div class="mode-btn" id="m-mid" onclick="selectMode('mid')">საშუალო<br><small style="font-size:10px;opacity:0.6;">× ÷</small></div>
+    <div class="mode-btn" id="m-hard" onclick="selectMode('hard')">რთული<br><small style="font-size:10px;opacity:0.6;">× ÷ ²</small></div>
+  </div>
+  <button onclick="startGame()">▶ დაწყება</button>
+</div>
+
+<!-- End overlay -->
+<div class="overlay" id="ov-end" style="display:none">
+  <h2>🏆</h2>
+  <div class="res-grid">
+    <div class="res-box"><div class="rl">ქულა</div><div class="rv" style="color:#60c8ff" id="r-score">0</div></div>
+    <div class="res-box"><div class="rl">ბუშტები</div><div class="rv" style="color:#3ddc84" id="r-pop">0</div></div>
+    <div class="res-box"><div class="rl">მაქს.კომბო</div><div class="rv" style="color:#ffe600" id="r-combo">x1</div></div>
+    <div class="res-box"><div class="rl">შეცდომები</div><div class="rv" style="color:#ff5c5c" id="r-err">0</div></div>
+  </div>
+  <button onclick="location.reload()">↺ თავიდან</button>
+</div>
+
+<script>
+const arena = document.getElementById('arena');
+const pc = document.getElementById('particle-canvas');
+const pctx = pc.getContext('2d');
+
+let mode = 'easy';
+let score=0, combo=1, maxCombo=1, popped=0, errs=0;
+let timeLeft=60, timerInt=null, gameOn=false;
+let bubbles=[], spawnInt=null;
+let particles2=[];
+
+const PALETTE=[
+  {bg:'rgba(96,200,255,0.18)',border:'rgba(96,200,255,0.55)',text:'#b0e8ff'},
+  {bg:'rgba(155,120,255,0.18)',border:'rgba(155,120,255,0.55)',text:'#d4c0ff'},
+  {bg:'rgba(61,220,132,0.18)',border:'rgba(61,220,132,0.55)',text:'#a0f0c8'},
+  {bg:'rgba(255,180,60,0.18)',border:'rgba(255,180,60,0.55)',text:'#ffe0a0'},
+  {bg:'rgba(255,100,150,0.18)',border:'rgba(255,100,150,0.55)',text:'#ffb8cc'},
+];
+
+function selectMode(m){
+  mode=m;
+  ['easy','mid','hard'].forEach(x=>document.getElementById('m-'+x).classList.toggle('active',x===m));
+}
+
+function ri(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+function genProblem(){
+  if(mode==='easy'){
+    const op=['+','-'][ri(0,1)];
+    let a,b,ans,expr;
+    if(op==='+'){a=ri(1,20);b=ri(1,20);ans=a+b;expr=`${a}+${b}`;}
+    else{a=ri(5,30);b=ri(1,a);ans=a-b;expr=`${a}−${b}`;}
+    return{expr,ans};
+  }
+  if(mode==='mid'){
+    const op=['×','÷'][ri(0,1)];
+    let a,b,ans,expr;
+    if(op==='×'){a=ri(2,9);b=ri(2,9);ans=a*b;expr=`${a}×${b}`;}
+    else{ans=ri(2,9);b=ri(2,9);a=ans*b;expr=`${a}÷${b}`;}
+    return{expr,ans};
+  }
+  // hard
+  const op=['×','÷','²','+×'][ri(0,3)];
+  let a,b,ans,expr;
+  if(op==='×'){a=ri(6,12);b=ri(6,12);ans=a*b;expr=`${a}×${b}`;}
+  else if(op==='÷'){ans=ri(3,12);b=ri(3,9);a=ans*b;expr=`${a}÷${b}`;}
+  else if(op==='²'){a=ri(2,12);ans=a*a;expr=`${a}²`;}
+  else{a=ri(2,9);b=ri(2,9);const c=ri(1,5);ans=a*b+c;expr=`${a}×${b}+${c}`;}
+  return{expr,ans};
+}
+
+function spawnBubble(){
+  if(!gameOn) return;
+  const aw=arena.offsetWidth, ah=arena.offsetHeight;
+  const size=mode==='hard'?80+ri(0,20):90+ri(0,30);
+  const {expr,ans}=genProblem();
+  // avoid overlap
+  let x,y,tries=0;
+  do{
+    x=ri(size/2+8, aw-size/2-8);
+    y=ri(size/2+8, ah-size/2-20);
+    tries++;
+  }while(tries<20 && bubbles.some(b=>Math.hypot(b.x-x,b.y-y)<(b.size/2+size/2+12)));
+
+  const pal=PALETTE[ri(0,PALETTE.length-1)];
+  const el=document.createElement('div');
+  el.className='bubble';
+  el.style.cssText=`
+    width:${size}px;height:${size}px;
+    left:${x-size/2}px;top:${y-size/2}px;
+    background:${pal.bg};
+    border:2px solid ${pal.border};
+    box-shadow:0 0 18px ${pal.border.replace('0.55','0.2')};
+    --ty:0px;
+  `;
+  const exprEl=document.createElement('div');
+  exprEl.className='expr';
+  exprEl.style.cssText=`font-size:${size>100?18:15}px;color:${pal.text};`;
+  exprEl.textContent=expr;
+  el.appendChild(exprEl);
+  const eqEl=document.createElement('div');
+  eqEl.className='eq';
+  eqEl.style.color=pal.text;
+  eqEl.textContent='= ?';
+  el.appendChild(eqEl);
+
+  // floating anim
+  const dur=3+Math.random()*3;
+  const amp=8+Math.random()*12;
+  const phase=Math.random()*Math.PI*2;
+  el.dataset.startY=y;
+  el.dataset.amp=amp;
+  el.dataset.phase=phase;
+  el.dataset.dur=dur;
+  el.dataset.t=Math.random()*dur;
+
+  el.addEventListener('click',()=>{ selectBubble(id); });
+
+  const id=Date.now()+Math.random();
+  el.dataset.id=id;
+  arena.appendChild(el);
+  bubbles.push({id,el,x,y,size,ans,pal,
+    startY:y,amp,phase,dur,t:parseFloat(el.dataset.t)});
+}
+
+let selId=null;
+function selectBubble(id){
+  if(!gameOn) return;
+  bubbles.forEach(b=>{
+    b.el.style.outline='none';
+    b.el.style.boxShadow=`0 0 18px ${b.pal.border.replace('0.55','0.2')}`;
+  });
+  selId=id;
+  const b=bubbles.find(x=>x.id==id);
+  if(b){
+    b.el.style.outline=`2.5px solid ${b.pal.border.replace('0.55','0.9')}`;
+    b.el.style.boxShadow=`0 0 28px ${b.pal.border.replace('0.55','0.5')}`;
+  }
+  document.getElementById('ans-input').focus();
+}
+
+function tryPop(){
+  if(!gameOn) return;
+  const val=parseInt(document.getElementById('ans-input').value);
+  if(isNaN(val)) return;
+
+  // find matching bubble (selected first, else first match)
+  let b=null;
+  if(selId) b=bubbles.find(x=>x.id==selId && x.ans===val);
+  if(!b) b=bubbles.find(x=>x.ans===val);
+
+  if(b){
+    popBubble(b);
+    combo++;
+    maxCombo=Math.max(maxCombo,combo);
+    const pts=10*combo;
+    score+=pts;
+    popped++;
+    showFlash(`+${pts}${combo>2?' 🔥 x'+combo:''}`);
+    updateHUD();
+    flashInput('ok');
+  } else {
+    errs++;
+    combo=1;
+    flashInput('err');
+    // shake all bubbles momentarily
+    bubbles.forEach(b2=>{
+      b2.el.classList.remove('wrong-anim');
+      void b2.el.offsetWidth;
+      b2.el.classList.add('wrong-anim');
+    });
+  }
+  document.getElementById('ans-input').value='';
+  document.getElementById('ans-input').focus();
+  selId=null;
+}
+
+function popBubble(b){
+  const rect=b.el.getBoundingClientRect();
+  const arenaRect=arena.getBoundingClientRect();
+  const cx=rect.left-arenaRect.left+b.size/2;
+  const cy=rect.top-arenaRect.top+b.size/2;
+  spawnParticles2(cx,cy,b.pal.border,28);
+  b.el.classList.add('popping');
+  setTimeout(()=>{ b.el.remove(); },350);
+  bubbles=bubbles.filter(x=>x.id!==b.id);
+}
+
+function flashInput(type){
+  const el=document.getElementById('ans-input');
+  el.classList.remove('ok','err');
+  void el.offsetWidth;
+  el.classList.add(type);
+  setTimeout(()=>el.classList.remove('ok','err'),350);
+}
+
+function showFlash(msg){
+  const el=document.getElementById('score-flash');
+  el.textContent=msg;
+  el.style.opacity='1';
+  setTimeout(()=>el.style.opacity='0',800);
+}
+
+function updateHUD(){
+  document.getElementById('score-v').textContent=score;
+  document.getElementById('combo-v').textContent='x'+combo;
+}
+
+// Particle system on canvas
+function spawnParticles2(x,y,color,n){
+  for(let i=0;i<n;i++){
+    const a=Math.PI*2/n*i+Math.random()*0.4;
+    const s=2+Math.random()*5;
+    particles2.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,color,r:2+Math.random()*4});
+  }
+}
+
+function resizeCanvas(){
+  pc.width=arena.offsetWidth;
+  pc.height=arena.offsetHeight;
+}
+
+let rafId=null;
+function animLoop(){
+  if(!gameOn && particles2.length===0){cancelAnimationFrame(rafId);return;}
+  // float bubbles
+  const now=performance.now()/1000;
+  bubbles.forEach(b=>{
+    b.t+=0.016;
+    const dy=Math.sin(b.t/b.dur*Math.PI*2+b.phase)*b.amp;
+    b.el.style.top=(b.startY-b.size/2+dy)+'px';
+  });
+  // particles
+  pctx.clearRect(0,0,pc.width,pc.height);
+  particles2.forEach(p=>{
+    pctx.save();
+    pctx.globalAlpha=p.life;
+    pctx.fillStyle=p.color;
+    pctx.shadowColor=p.color;
+    pctx.shadowBlur=6;
+    pctx.beginPath();
+    pctx.arc(p.x,p.y,p.r*p.life,0,Math.PI*2);
+    pctx.fill();
+    pctx.restore();
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; p.life-=0.03;
+  });
+  particles2=particles2.filter(p=>p.life>0);
+  rafId=requestAnimationFrame(animLoop);
+}
+
+// Timer ring
+function updateTimerRing(){
+  const fill=document.getElementById('timer-fill');
+  const num=document.getElementById('timer-num');
+  const total=parseInt(document.getElementById('timer-num').dataset.total||60);
+  const frac=timeLeft/total;
+  const circ=132;
+  fill.style.strokeDashoffset=(circ*(1-frac))+'';
+  fill.style.stroke=timeLeft<=10?'#ff5c5c':timeLeft<=20?'#ffaa00':'#60c8ff';
+  num.textContent=timeLeft;
+  num.style.color=timeLeft<=10?'#ff5c5c':timeLeft<=20?'#ffaa00':'var(--text)';
+}
+
+function startGame(){
+  document.getElementById('ov-start').style.display='none';
+  score=0;combo=1;maxCombo=1;popped=0;errs=0;timeLeft=60;
+  gameOn=true;
+  bubbles=[];particles2=[];
+  // clear arena of any leftover bubbles
+  arena.querySelectorAll('.bubble').forEach(b=>b.remove());
+  resizeCanvas();
+  document.getElementById('timer-num').dataset.total=60;
+  updateHUD();
+  updateTimerRing();
+  document.getElementById('ans-input').disabled=false;
+  document.getElementById('pop-btn').disabled=false;
+  document.getElementById('ans-input').focus();
+
+  // spawn initial bubbles
+  for(let i=0;i<4;i++) setTimeout(spawnBubble, i*200);
+  spawnInt=setInterval(()=>{
+    if(bubbles.length<6) spawnBubble();
+  },2000);
+
+  timerInt=setInterval(()=>{
+    timeLeft--;
+    updateTimerRing();
+    if(timeLeft<=0){clearInterval(timerInt);clearInterval(spawnInt);endGame();}
+  },1000);
+
+  rafId=requestAnimationFrame(animLoop);
+}
+
+function endGame(){
+  gameOn=false;
+  document.getElementById('ans-input').disabled=true;
+  document.getElementById('pop-btn').disabled=true;
+  document.getElementById('r-score').textContent=score;
+  document.getElementById('r-pop').textContent=popped;
+  document.getElementById('r-combo').textContent='x'+maxCombo;
+  document.getElementById('r-err').textContent=errs;
+  document.getElementById('ov-end').style.display='flex';
+}
+
+document.getElementById('ans-input').addEventListener('keydown',e=>{if(e.key==='Enter')tryPop();});
+window.addEventListener('resize',resizeCanvas);
+resizeCanvas();
+</script>
+</body>
+</html>
