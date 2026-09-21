@@ -54,6 +54,78 @@ const games = [
     description: "idk what ts is about.",
     category: "Game",
     icon: "🧠",
-    file: "games/memory.html",
+    file: "games/arkanoid_ka.html",
     featured: false
-  }
+  },
+  {
+    title: "bubble pop",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/bubble_pop.html",
+    featured: false
+  },
+  {
+    title: "bubble shooter",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/bubble_shooter.html",
+    featured: false
+  },
+  {
+    title: "geography quiz (nerd)",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/geography_quiz.html",
+    featured: false
+  },
+  {
+    title: "georgia quiz",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/georgia_quiz.html",
+    featured: false
+  },
+  {
+    title: "math blaster",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/math_blaster.html",
+    featured: false
+  },
+  {
+    title: "math game",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/math-game.html",
+    featured: false
+  },
+  {
+    title: "space defender",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/space_defender_ka.html",
+    featured: false
+  },
+  {
+    title: "space shooter",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/space_shooter.html",
+    featured: false
+  },
+  {
+    title: "typing racer",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/typing_racer.html",
+    featured: false
+  },
