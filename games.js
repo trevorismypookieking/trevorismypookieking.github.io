@@ -48,5 +48,12 @@ const games = [
     icon: "🧠",
     file: "games/memory.html",
     featured: false
+  },
+  {
+    title: "arkanoid or something",
+    description: "idk what ts is about.",
+    category: "Game",
+    icon: "🧠",
+    file: "games/memory.html",
+    featured: false
   }
-];
